@@ -39,3 +39,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Large and mock assets
+Archive.zip
+*.pdf
+_assets/
+*.psd
+*.JPG
+*.png
+typings_gg.html
+yeezy_com.html
+walkthrough.md.resolved

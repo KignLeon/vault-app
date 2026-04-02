@@ -1,14 +1,13 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { AppShell } from "@/components/layout/app-shell";
-import { QuantitySelector } from "@/components/ui/quantity-selector";
-import { useProducts } from "@/hooks/use-products";
 import { useCart, type CompletedOrder } from "@/lib/cart";
+import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
-import { Send, Package, ChevronDown, Clock, Check, Truck, CreditCard, Eye, ChevronRight, ShoppingBag, RotateCw } from "lucide-react";
+import { Send, Package, ChevronDown, Clock, Check, Truck, CreditCard, Eye, ChevronRight, ShoppingBag, RotateCw, RefreshCw } from "lucide-react";
 import Link from "next/link";
 
 // ---- ORDER STATUS TIMELINE ----
@@ -247,172 +246,36 @@ function OrderHistoryView() {
   );
 }
 
-// ---- NEW ORDER REQUEST VIEW ----
+// ---- NEW ORDER VIEW — directs to inventory + checkout ----
 function NewOrderView() {
-  const searchParams = useSearchParams();
-  const preselectedId = searchParams.get("product");
-  const { fg, border, muted, isDark, accent, accentFg, accentGlow } = useTheme();
-  const { products } = useProducts();
-
-  const [selectedProductId, setSelectedProductId] = useState(preselectedId || "");
-  const [quantity, setQuantity] = useState(1);
-  const [isBulk, setIsBulk] = useState(false);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [notes, setNotes] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-
-  const selectedProduct = products.find((p) => p.id === selectedProductId);
-  const availableProducts = products.filter((p) => p.status !== "sold-out");
-
-  const bulkTier = selectedProduct?.bulk?.[0];
-  const unitPrice = isBulk && bulkTier ? bulkTier.price : selectedProduct?.price || 0;
-  const total = unitPrice * quantity;
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitted(true);
-  };
-
-  if (submitted) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col items-center justify-center py-24 gap-6"
-      >
-        <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: accent }}>
-          <Send size={18} style={{ color: accentFg }} />
-        </div>
-        <h2 className="font-mono text-sm tracking-[0.25em] font-bold" style={{ color: fg }}>ORDER REQUEST SUBMITTED</h2>
-        <p className="font-mono text-[11px] tracking-wider text-center max-w-sm" style={{ color: muted }}>
-          Your request has been received. You will be contacted via the provided email for confirmation and next steps.
-        </p>
-        <button
-          onClick={() => {
-            setSubmitted(false);
-            setSelectedProductId("");
-            setQuantity(1);
-            setName("");
-            setEmail("");
-            setNotes("");
-          }}
-          className="font-mono text-[10px] tracking-[0.2em] pb-0.5 transition-colors"
-          style={{ color: accent, borderBottom: `1px solid ${accent}` }}
-        >
-          NEW REQUEST
-        </button>
-      </motion.div>
-    );
-  }
-
-  const inputCls = "w-full bg-transparent border px-4 py-3 font-mono text-xs tracking-wider outline-none transition-colors";
+  const { fg, border, muted, accent, accentFg, accentGlow } = useTheme();
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-xl mx-auto space-y-8">
-      {/* Product Selection */}
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-        <label className="font-mono text-[10px] tracking-[0.2em] uppercase block mb-2" style={{ color: muted }}>
-          SELECT PRODUCT
-        </label>
-        <div className="relative">
-          <Package size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: muted }} />
-          <select
-            value={selectedProductId}
-            onChange={(e) => setSelectedProductId(e.target.value)}
-            className="w-full bg-transparent border px-10 py-3 font-mono text-xs tracking-wider appearance-none outline-none transition-colors"
-            style={{ borderColor: border, color: fg }}
-            required
-            id="product-select"
-          >
-            <option value="">Choose a product...</option>
-            {availableProducts.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.sku} — {p.name} — ${p.price}
-              </option>
-            ))}
-          </select>
-          <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: muted }} />
-        </div>
-      </motion.div>
-
-      {/* Quantity */}
-      {selectedProduct && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-          <QuantitySelector min={1} max={selectedProduct.stock} step={1} defaultValue={quantity} onChange={setQuantity} label="QUANTITY" />
-        </motion.div>
-      )}
-
-      {/* Bulk Toggle */}
-      {bulkTier && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-          className="flex items-center justify-between border p-4"
-          style={{ borderColor: border }}
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center justify-center py-20 gap-8 text-center">
+      <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: accentGlow }}>
+        <ShoppingBag size={24} style={{ color: accent }} />
+      </div>
+      <div className="space-y-2">
+        <h2 className="font-mono text-sm tracking-[0.2em] font-bold" style={{ color: fg }}>PLACE AN ORDER</h2>
+        <p className="font-mono text-[11px] tracking-wider max-w-xs" style={{ color: muted }}>
+          Browse the inventory, add items to your cart, then checkout securely.
+        </p>
+      </div>
+      <div className="flex flex-col gap-3 w-full max-w-xs">
+        <Link href="/inventory"
+          className="w-full py-3. font-mono text-[10px] tracking-[0.25em] text-center active:scale-95 transition-transform py-3"
+          style={{ background: accent, color: accentFg }}
         >
-          <div>
-            <span className="font-mono text-[10px] tracking-[0.2em] uppercase block" style={{ color: muted }}>BULK PRICING</span>
-            <span className="font-mono text-[11px] mt-0.5 block" style={{ color: fg }}>
-              ${bulkTier.price}/{bulkTier.label} · {bulkTier.qty}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setIsBulk(!isBulk)}
-            className="w-10 h-5 rounded-full transition-all relative"
-            style={{ background: isBulk ? accent : (isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.12)") }}
-          >
-            <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${isBulk ? "left-5.5" : "left-0.5"}`} />
-          </button>
-        </motion.div>
-      )}
-
-      {/* Pricing Summary */}
-      {selectedProduct && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="border p-4 space-y-2" style={{ borderColor: border }}>
-          <div className="flex justify-between font-mono text-[10px] tracking-wider" style={{ color: muted }}>
-            <span>UNIT PRICE</span><span>${unitPrice}</span>
-          </div>
-          <div className="flex justify-between font-mono text-[10px] tracking-wider" style={{ color: muted }}>
-            <span>QUANTITY</span><span>× {quantity}</span>
-          </div>
-          <div className="flex justify-between font-mono text-sm font-bold pt-2" style={{ color: fg, borderTop: `1px solid ${border}` }}>
-            <span>TOTAL</span><span>${total.toLocaleString()}</span>
-          </div>
-        </motion.div>
-      )}
-
-      {/* Contact Info */}
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="space-y-4">
-        <div>
-          <label className="font-mono text-[10px] tracking-[0.2em] uppercase block mb-2" style={{ color: muted }}>NAME</label>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} className={inputCls} style={{ borderColor: border, color: fg }} required id="name-input" />
-        </div>
-        <div>
-          <label className="font-mono text-[10px] tracking-[0.2em] uppercase block mb-2" style={{ color: muted }}>EMAIL</label>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} style={{ borderColor: border, color: fg }} required id="email-input" />
-        </div>
-        <div>
-          <label className="font-mono text-[10px] tracking-[0.2em] uppercase block mb-2" style={{ color: muted }}>NOTES</label>
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className={`${inputCls} resize-none`} style={{ borderColor: border, color: fg }} placeholder="Special requests, bulk inquiry details..." id="notes-input" />
-        </div>
-      </motion.div>
-
-      {/* Submit */}
-      <motion.button
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-        type="submit"
-        disabled={!selectedProduct}
-        className="w-full py-3.5 font-mono text-xs tracking-[0.25em] transition-all disabled:opacity-30 disabled:cursor-not-allowed active:scale-[0.98]"
-        style={{ background: accent, color: accentFg }}
-      >
-        SUBMIT REQUEST
-      </motion.button>
-    </form>
+          BROWSE INVENTORY
+        </Link>
+        <Link href="/checkout"
+          className="w-full py-3 font-mono text-[10px] tracking-[0.2em] text-center border active:scale-95 transition-transform"
+          style={{ borderColor: border, color: muted }}
+        >
+          GO TO CHECKOUT
+        </Link>
+      </div>
+    </motion.div>
   );
 }
 

@@ -32,16 +32,16 @@ export default function SettingsPage() {
   const [zip, setZip] = useState("");
   const [saved, setSaved] = useState(false);
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (user) {
-      await updateProfile({ displayName, email });
+      updateProfile({ displayName, email });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     }
   };
 
-  const handleLogout = async () => {
-    await logout();
+  const handleLogout = () => {
+    logout();
     router.push("/");
   };
 
@@ -51,16 +51,16 @@ export default function SettingsPage() {
 
   return (
     <AppShell>
-      <div className="pt-6 pb-4 mb-6" style={{ borderBottom: `1px solid ${border}` }}>
-        <h1 className="font-mono text-xs tracking-[0.3em] uppercase" style={{ color: fg }}>SETTINGS</h1>
-        <p className="font-mono text-[10px] tracking-wider mt-1" style={{ color: muted }}>
-          @{user.username} · {user.role.replace("_", " ").toUpperCase()}
+      <div className="pt-6 pb-4 mb-6 sm:mb-8" style={{ borderBottom: `1px solid ${border}` }}>
+        <h1 className="font-mono text-xs sm:text-sm tracking-[0.3em] uppercase" style={{ color: fg }}>SETTINGS</h1>
+        <p className="font-mono text-[10px] sm:text-xs tracking-wider mt-1" style={{ color: muted }}>
+          @{user?.username || "guest"} · {(user?.role || "user").replace("_", " ").toUpperCase()}
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="flex flex-col lg:flex-row gap-8">
         {/* Sidebar */}
-        <div className="lg:col-span-1 space-y-1">
+        <div className="w-full lg:w-64 flex-shrink-0 space-y-1">
           {sections.map((section) => {
             const Icon = section.icon;
             const isActive = activeSection === section.id;
@@ -100,29 +100,29 @@ export default function SettingsPage() {
         </div>
 
         {/* Content */}
-        <div className="lg:col-span-3">
-          <motion.div key={activeSection} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+        <div className="flex-1 min-w-0">
+          <motion.div key={activeSection} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 lg:max-w-xl">
             {activeSection === "profile" && (
               <>
                 <div className="flex items-center gap-4 mb-6">
-                  <Avatar className="h-16 w-16 border" style={{ borderColor: border }}>
-                    <AvatarImage src={user.avatar} alt={user.displayName} />
-                    <AvatarFallback className="text-lg">{user.displayName[0]?.toUpperCase()}</AvatarFallback>
+                  <Avatar className="h-16 w-16 border flex-shrink-0" style={{ borderColor: border }}>
+                    <AvatarImage src={user?.avatar} alt={user?.displayName || user?.username || "User"} />
+                    <AvatarFallback className="text-lg font-mono font-bold">{(user?.displayName || user?.username || "?")[0]?.toUpperCase()}</AvatarFallback>
                   </Avatar>
-                  <div>
-                    <p className="font-mono text-sm font-bold tracking-wider" style={{ color: fg }}>{user.displayName}</p>
-                    <p className="font-mono text-[10px] tracking-wider" style={{ color: muted }}>@{user.username}</p>
+                  <div className="min-w-0">
+                    <p className="font-mono text-sm font-bold tracking-wider truncate" style={{ color: fg }}>{user?.displayName || "User"}</p>
+                    <p className="font-mono text-[10px] tracking-wider truncate" style={{ color: muted }}>@{user?.username || "guest"}</p>
                   </div>
                 </div>
 
                 <div className="space-y-3">
                   <label className="font-mono text-[9px] tracking-[0.2em] block" style={{ color: muted }}>DISPLAY NAME</label>
-                  <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className={inputClass} style={{ borderColor: border, color: fg }} />
+                  <input defaultValue={user?.displayName || ''} onChange={(e) => setDisplayName(e.target.value)} className={inputClass} style={{ borderColor: border, color: fg }} />
                 </div>
 
                 <div className="space-y-3">
                   <label className="font-mono text-[9px] tracking-[0.2em] block" style={{ color: muted }}>EMAIL</label>
-                  <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com" type="email" className={inputClass} style={{ borderColor: border, color: fg }} />
+                  <input defaultValue={user?.email || ''} onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com" type="email" className={inputClass} style={{ borderColor: border, color: fg }} />
                 </div>
 
                 <button onClick={handleSave} className="px-6 py-3 font-mono text-[10px] tracking-[0.2em] active:scale-95 transition-transform" style={{ background: accent, color: accentFg }}>
@@ -153,9 +153,9 @@ export default function SettingsPage() {
                 <div className="border p-4 space-y-3" style={{ borderColor: border }}>
                   <p className="font-mono text-xs" style={{ color: fg }}>Account Info</p>
                   <div className="space-y-1">
-                    <p className="font-mono text-[9px] tracking-wider" style={{ color: muted }}>USER ID: {user.id}</p>
-                    <p className="font-mono text-[9px] tracking-wider" style={{ color: muted }}>ROLE: {user.role.replace("_", " ").toUpperCase()}</p>
-                    <p className="font-mono text-[9px] tracking-wider" style={{ color: muted }}>JOINED: {new Date(user.createdAt).toLocaleDateString()}</p>
+                    <p className="font-mono text-[9px] tracking-wider" style={{ color: muted }}>USER ID: {user?.id}</p>
+                    <p className="font-mono text-[9px] tracking-wider" style={{ color: muted }}>ROLE: {user?.role?.replace("_", " ").toUpperCase()}</p>
+                    <p className="font-mono text-[9px] tracking-wider" style={{ color: muted }}>JOINED: {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : ""}</p>
                   </div>
                 </div>
               </>

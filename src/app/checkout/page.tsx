@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AppShell } from "@/components/layout/app-shell";
-import { useCart, CompletedOrder } from "@/lib/cart";
+import { useCart } from "@/lib/cart";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import { shippingOptions } from "@/lib/data";
@@ -21,16 +21,16 @@ const PAYMENT_METHODS: { id: PaymentMethod; label: string; desc: string; next: s
 ];
 
 export default function CheckoutPage() {
-  const { items, subtotal, discount, promoApplied, promoCode, setPromoCode, applyPromo, removePromo, promoError, shippingMethod, setShippingMethod, shippingCost, total, placeOrder } = useCart();
+  const { items, subtotal, discount, promoApplied, promoCode, setPromoCode, applyPromo, removePromo, promoError, shippingMethod, setShippingMethod, shippingCost, total, placeOrder, isPlacingOrder } = useCart();
   const { fg, border, isDark, cardBg, muted, accent, accentFg, accentGlow, accentMuted } = useTheme();
   const { user } = useAuth();
   const router = useRouter();
-  const [placedOrder, setPlacedOrder] = useState<CompletedOrder | null>(null);
+  const [placedOrder, setPlacedOrder] = useState<ReturnType<typeof placeOrder> extends Promise<infer T> ? T : never | null>(null);
   const [processing, setProcessing] = useState(false);
 
   // Form state
   const [name, setName] = useState(user?.displayName || "");
-  const [email, setEmail] = useState(user?.email || "");
+  const [email, setEmail] = useState(user?.email?.includes("@gasclub247.app") ? "" : (user?.email || ""));
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
@@ -38,13 +38,23 @@ export default function CheckoutPage() {
   const [notes, setNotes] = useState("");
   const [payMethod, setPayMethod] = useState<PaymentMethod>("crypto");
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
     setProcessing(true);
-    setTimeout(async () => {
-      const order = await placeOrder();
+    try {
+      const order = await placeOrder({
+        name,
+        email,
+        address,
+        city,
+        state,
+        zip,
+        notes,
+        paymentMethod: payMethod,
+      });
       setPlacedOrder(order);
+    } finally {
       setProcessing(false);
-    }, 1500);
+    }
   };
 
   // ---- EMPTY CART STATE ----

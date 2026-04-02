@@ -1,0 +1,76 @@
+-- ================================================
+-- GASCLUB247 — Supabase Migration 003
+-- Seed Products (33 strains + Drive catalog products)
+-- ================================================
+
+-- Standard bulk pricing template (jsonb)
+-- premiumBulk: QP=$400, HP=$750, LB=$1400
+-- standardBulk: QP=$350, HP=$650, LB=$1200
+
+insert into public.products (sku, name, category, image_url, images, price, stock, status, description, tags, featured, bulk_tiers, viewers, recent_orders) values
+
+-- ⭐ FEATURED / TOP SELLERS
+('TC-PLC-01', 'PLATINUM LEMON CHERRY', 'featured', 'https://res.cloudinary.com/ddnhp0hzd/image/upload/v1775013257/gasclub247/products/platinum-lemon-cherry.jpg', '[]', 120, 42, 'in-stock', 'Bold cherry-forward indoor flower with premium bag appeal. Dense nugs, rich terpene profile. Our #1 seller.', '["indoor","premium","cherry","top-seller"]', true, '[{"label":"QP","qty":"1/4 LB","price":400},{"label":"HP","qty":"1/2 LB","price":750},{"label":"LB","qty":"1 LB","price":1400}]', 18, 4),
+('TC-PP-01', 'PINK PANTHER', 'featured', 'https://res.cloudinary.com/ddnhp0hzd/image/upload/v1775013257/gasclub247/products/pink-panther.jpg', '[]', 110, 6, 'low-stock', 'Smooth fruity profile, premium boutique drop. Limited batch with standout aroma and clean finish.', '["boutique","fruity","limited"]', true, '[{"label":"QP","qty":"1/4 LB","price":350},{"label":"HP","qty":"1/2 LB","price":650},{"label":"LB","qty":"1 LB","price":1200}]', 20, 5),
+('TC-US-01', 'UNCLE SNOOP', 'featured', '', '[]', 115, 28, 'in-stock', 'Heavy-hitting classic profile with limited batch feel. OG lineage, strong nose, smooth pull.', '["classic","og","heavy"]', true, '[{"label":"QP","qty":"1/4 LB","price":350},{"label":"HP","qty":"1/2 LB","price":650},{"label":"LB","qty":"1 LB","price":1200}]', 12, 3),
+('TC-LDR-01', 'LEMON DIOR RUNTZ', 'featured', 'https://res.cloudinary.com/ddnhp0hzd/image/upload/gasclub247/products/pre-rolls/lemondiorruntz-preroll.jpg', '[]', 125, 18, 'in-stock', 'Exotic lemon-forward profile with Runtz genetics. Premium indoor, dense structure, loud nose.', '["exotic","runtz","lemon"]', true, '[{"label":"QP","qty":"1/4 LB","price":400},{"label":"HP","qty":"1/2 LB","price":750},{"label":"LB","qty":"1 LB","price":1400}]', 15, 4),
+('TC-WH-01', 'WARHEADZ', 'featured', 'https://res.cloudinary.com/ddnhp0hzd/image/upload/gasclub247/products/pre-rolls/warheadz-preroll.jpg', '[]', 118, 14, 'in-stock', 'Sour and pungent gas profile. Heavy hitting, fast onset. Named for the candy-sour terpene punch.', '["gas","sour","heavy"]', true, '[{"label":"QP","qty":"1/4 LB","price":350},{"label":"HP","qty":"1/2 LB","price":650},{"label":"LB","qty":"1 LB","price":1200}]', 10, 2),
+('TC-BR-01', 'BLACK RUNTZ', 'featured', '', '[]', 115, 22, 'in-stock', 'Dark purple hues with sweet candy finish. Runtz phenotype with deeper, more sedative effects.', '["runtz","purple","sweet"]', true, '[{"label":"QP","qty":"1/4 LB","price":350},{"label":"HP","qty":"1/2 LB","price":650},{"label":"LB","qty":"1 LB","price":1200}]', 15, 3),
+('TC-BN-01', 'BLUE NERDS', 'featured', '', '[]', 112, 30, 'in-stock', 'Sweet blue candy profile with balanced hybrid effects. Colorful bag appeal, smooth smoke.', '["candy","hybrid","sweet"]', true, '[{"label":"QP","qty":"1/4 LB","price":350},{"label":"HP","qty":"1/2 LB","price":650},{"label":"LB","qty":"1 LB","price":1200}]', 11, 2),
+('TC-WC-01', 'WEDDING CAKE', 'featured', '', '[]', 120, 16, 'in-stock', 'Rich vanilla and earthy undertones. Dense trichome-coated buds. Premium indoor cultivation.', '["premium","indoor","vanilla"]', true, '[{"label":"QP","qty":"1/4 LB","price":400},{"label":"HP","qty":"1/2 LB","price":750},{"label":"LB","qty":"1 LB","price":1400}]', 17, 5),
+
+-- 🍭 EXOTIC LINE
+('TC-CL-01', 'CURELATO', 'exotic', '', '[]', 130, 10, 'low-stock', 'Gelato cross with enhanced cure. Creamy, gassy, and potent. Small batch exotic.', '["gelato","exotic","creamy"]', false, '[{"label":"QP","qty":"1/4 LB","price":400},{"label":"HP","qty":"1/2 LB","price":750},{"label":"LB","qty":"1 LB","price":1400}]', 14, 3),
+('TC-DC-01', 'DIVORCE CAKE', 'exotic', '', '[]', 125, 12, 'in-stock', 'Wedding Cake x White Widow cross. Heavy indica effects with sweet doughy flavor.', '["indica","cake","potent"]', false, '[{"label":"QP","qty":"1/4 LB","price":400},{"label":"HP","qty":"1/2 LB","price":750},{"label":"LB","qty":"1 LB","price":1400}]', 10, 2),
+('TC-TR-01', 'TRUMP RUNTZ', 'exotic', '', '[]', 128, 8, 'low-stock', 'Loud and unapologetic. Dense nugs with candy-gas profile. Limited exotic batch.', '["runtz","limited","loud"]', false, '[{"label":"QP","qty":"1/4 LB","price":400},{"label":"HP","qty":"1/2 LB","price":750},{"label":"LB","qty":"1 LB","price":1400}]', 21, 5),
+('TC-SL-01', 'SUPREME LATTO', 'exotic', 'https://res.cloudinary.com/ddnhp0hzd/image/upload/gasclub247/products/pre-rolls/supreme-latto-preroll.jpg', '[]', 130, 9, 'low-stock', 'Rare exotic with sweet pastry undertones. Supreme tier flower, hand-trimmed.', '["exotic","rare","pastry"]', false, '[{"label":"QP","qty":"1/4 LB","price":400},{"label":"HP","qty":"1/2 LB","price":750},{"label":"LB","qty":"1 LB","price":1400}]', 16, 4),
+('TC-BI-01', 'BISCANTE', 'exotic', '', '[]', 135, 7, 'low-stock', 'Gelato x Biscotti cross. Sweet, earthy, with a gas finish. Ultra-premium indoor.', '["gelato","biscotti","indoor"]', false, '[{"label":"QP","qty":"1/4 LB","price":400},{"label":"HP","qty":"1/2 LB","price":750},{"label":"LB","qty":"1 LB","price":1400}]', 13, 3),
+('TC-II-01', 'ITALIAN ICE', 'exotic', '', '[]', 125, 14, 'in-stock', 'Cool menthol-sweet profile with fruity exhale. Refreshing smoke, premium cure.', '["menthol","sweet","fruity"]', false, '[{"label":"QP","qty":"1/4 LB","price":400},{"label":"HP","qty":"1/2 LB","price":750},{"label":"LB","qty":"1 LB","price":1400}]', 11, 2),
+('TC-VG-01', 'VENOM GAS', 'exotic', '', '[]', 122, 20, 'in-stock', 'Pure gas. Pungent, loud, aggressive terpene profile. Not for the faint of heart.', '["gas","pungent","heavy"]', false, '[{"label":"QP","qty":"1/4 LB","price":350},{"label":"HP","qty":"1/2 LB","price":650},{"label":"LB","qty":"1 LB","price":1200}]', 9, 2),
+('TC-SK-01', 'SKITTLES', 'exotic', '', '[]', 115, 25, 'in-stock', 'Rainbow candy terpenes. Sweet, fruit-forward, and balanced. Fan favorite strain.', '["candy","sweet","balanced"]', false, '[{"label":"QP","qty":"1/4 LB","price":350},{"label":"HP","qty":"1/2 LB","price":650},{"label":"LB","qty":"1 LB","price":1200}]', 17, 5),
+('TC-DSO-01', 'DOUBLE STUFF OREOS', 'exotic', '', '[]', 128, 11, 'in-stock', 'Cookies phenotype with doubled-down dough and cream flavor. Dense and frosty.', '["cookies","creamy","frosty"]', false, '[{"label":"QP","qty":"1/4 LB","price":400},{"label":"HP","qty":"1/2 LB","price":750},{"label":"LB","qty":"1 LB","price":1400}]', 12, 3),
+('TC-CM-01', 'CEREAL MILK', 'exotic', '', '[]', 120, 18, 'in-stock', 'Sweet creamy cereal flavor. Cookies Fam genetics. Smooth smoke with uplifting effects.', '["cookies","sweet","creamy"]', false, '[{"label":"QP","qty":"1/4 LB","price":350},{"label":"HP","qty":"1/2 LB","price":650},{"label":"LB","qty":"1 LB","price":1200}]', 14, 4),
+('TC-G34-01', 'GELATO 34', 'exotic', '', '[]', 125, 15, 'in-stock', 'Classic Gelato phenotype. Sherbert and Thin Mint cross. Sweet, potent, top-shelf.', '["gelato","classic","sweet"]', false, '[{"label":"QP","qty":"1/4 LB","price":400},{"label":"HP","qty":"1/2 LB","price":750},{"label":"LB","qty":"1 LB","price":1400}]', 15, 5),
+
+-- 🍬 CANDY / FRUITY  
+('TC-CR-01', 'CANDY RUNTZ', 'candy', '', '[]', 112, 22, 'in-stock', 'Ultra-sweet candy profile. Runtz genetics with loud colors and sugar-cookie terps.', '["candy","runtz","sweet"]', false, '[{"label":"QP","qty":"1/4 LB","price":350},{"label":"HP","qty":"1/2 LB","price":650},{"label":"LB","qty":"1 LB","price":1200}]', 11, 2),
+('TC-CC-01', 'COTTON CANDY', 'candy', '', '[]', 108, 28, 'in-stock', 'Light, airy, sweet smoke. Perfect for daytime. Mellow effects, great flavor.', '["sweet","light","daytime"]', false, '[{"label":"QP","qty":"1/4 LB","price":350},{"label":"HP","qty":"1/2 LB","price":650},{"label":"LB","qty":"1 LB","price":1200}]', 8, 2),
+('TC-BP-01', 'BERRY POP', 'candy', 'https://res.cloudinary.com/ddnhp0hzd/image/upload/gasclub247/products/pre-rolls/berry-pop-preroll.jpg', '[]', 110, 20, 'in-stock', 'Mixed berry terpene explosion. Sweet, tart, fruity. Eye-catching purple hues.', '["berry","fruity","purple"]', false, '[{"label":"QP","qty":"1/4 LB","price":350},{"label":"HP","qty":"1/2 LB","price":650},{"label":"LB","qty":"1 LB","price":1200}]', 9, 2),
+('TC-PS-01', 'PINK STARBURST', 'candy', '', '[]', 115, 16, 'in-stock', 'Tastes exactly like the pink candy. Sweet strawberry-citrus with smooth exhale.', '["strawberry","citrus","sweet"]', false, '[{"label":"QP","qty":"1/4 LB","price":350},{"label":"HP","qty":"1/2 LB","price":650},{"label":"LB","qty":"1 LB","price":1200}]', 14, 3),
+('TC-SG-01', 'STRAWBERRY GELATO', 'candy', '', '[]', 118, 14, 'in-stock', 'Gelato cross with strawberry phenotype. Creamy, fruity, and potent. Beautiful buds.', '["gelato","strawberry","creamy"]', false, '[{"label":"QP","qty":"1/4 LB","price":350},{"label":"HP","qty":"1/2 LB","price":650},{"label":"LB","qty":"1 LB","price":1200}]', 10, 2),
+('TC-MM-01', 'MANGO MINTZ', 'candy', '', '[]', 116, 18, 'in-stock', 'Tropical mango nose with cool minty finish. Refreshing and euphoric.', '["tropical","minty","fruity"]', false, '[{"label":"QP","qty":"1/4 LB","price":350},{"label":"HP","qty":"1/2 LB","price":650},{"label":"LB","qty":"1 LB","price":1200}]', 8, 2),
+
+-- ⛽ GAS / HEAVY HITTERS  
+('TC-GG4-01', 'GG4 (GORILLA GLUE #4)', 'gas', '', '[]', 115, 20, 'in-stock', 'The original heavy-hitter. Pungent diesel with earthy pine. Locks you to the couch.', '["indica","diesel","classic"]', false, '[{"label":"QP","qty":"1/4 LB","price":350},{"label":"HP","qty":"1/2 LB","price":650},{"label":"LB","qty":"1 LB","price":1200}]', 17, 5),
+('TC-MB-01', 'MOTOR BREATH', 'gas', '', '[]', 120, 12, 'in-stock', 'Fuel-forward with garlic undertones. Chemdog lineage. Strong, sedative, for experienced users.', '["fuel","garlic","heavy"]', false, '[{"label":"QP","qty":"1/4 LB","price":350},{"label":"HP","qty":"1/2 LB","price":650},{"label":"LB","qty":"1 LB","price":1200}]', 12, 3),
+('TC-GF-01', 'GAS FACE', 'gas', '', '[]', 118, 15, 'in-stock', 'Face Off OG x Cherry Pie x Biscotti. Triple-cross gas monster. Loud and potent.', '["gas","biscotti","potent"]', false, '[{"label":"QP","qty":"1/4 LB","price":350},{"label":"HP","qty":"1/2 LB","price":650},{"label":"LB","qty":"1 LB","price":1200}]', 10, 2),
+('TC-JFG-01', 'JET FUEL GELATO', 'gas', '', '[]', 122, 10, 'low-stock', 'Gelato x High Octane. Fuel-forward with sweet gelato finish. Rare cross.', '["gelato","fuel","rare"]', false, '[{"label":"QP","qty":"1/4 LB","price":400},{"label":"HP","qty":"1/2 LB","price":750},{"label":"LB","qty":"1 LB","price":1400}]', 20, 5),
+('TC-OK-01', 'OG KRYPTONITE', 'gas', '', '[]', 115, 18, 'in-stock', 'Pure OG genetics. Earthy, piney, with a knockout punch. West coast classic.', '["og","earthy","classic"]', false, '[{"label":"QP","qty":"1/4 LB","price":350},{"label":"HP","qty":"1/2 LB","price":650},{"label":"LB","qty":"1 LB","price":1200}]', 10, 2),
+
+-- 🧊 PREMIUM / INDOOR  
+('TC-LCG-01', 'LEMON CHERRY GELATO', 'premium', '', '[]', 130, 8, 'low-stock', 'Top 3 exotics nationwide. Lemon, cherry, and gelato cross. Dense, frosty, ultra-premium.', '["exotic","gelato","premium"]', false, '[{"label":"QP","qty":"1/4 LB","price":400},{"label":"HP","qty":"1/2 LB","price":750},{"label":"LB","qty":"1 LB","price":1400}]', 25, 7),
+('TC-ICC-01', 'ICE CREAM CAKE', 'premium', '', '[]', 125, 12, 'in-stock', 'Wedding Cake x Gelato #33. Rich, creamy, vanilla with doughy sweetness.', '["cake","gelato","creamy"]', false, '[{"label":"QP","qty":"1/4 LB","price":400},{"label":"HP","qty":"1/2 LB","price":750},{"label":"LB","qty":"1 LB","price":1400}]', 15, 4),
+('TC-SC-01', 'SNOW CAPS', 'premium', '', '[]', 128, 10, 'in-stock', 'Frosty white trichomes coat every surface. Minty-sweet with potent hybrid effects.', '["frosty","minty","hybrid"]', false, '[{"label":"QP","qty":"1/4 LB","price":400},{"label":"HP","qty":"1/2 LB","price":750},{"label":"LB","qty":"1 LB","price":1400}]', 17, 5),
+
+-- 🌿 DRIVE CATALOG — Indoors (Jan 30 batch)
+('TC-RB-01', 'RAINBOW BELTS', 'premium', '', '[]', 125, 15, 'in-stock', 'Vibrant rainbow terpene profile. Sweet, fruity, and potent with stunning bag appeal.', '["indoor","rainbow","fruity"]', false, '[{"label":"QP","qty":"1/4 LB","price":400},{"label":"HP","qty":"1/2 LB","price":750},{"label":"LB","qty":"1 LB","price":1400}]', 12, 3),
+('TC-LBG-01', 'LEMON BERRY GELATO', 'premium', '', '[]', 128, 12, 'in-stock', 'Lemon Berry meets Gelato genetics. Bright citrus nose, creamy finish, premium indoor cure.', '["gelato","lemon","berry","indoor"]', false, '[{"label":"QP","qty":"1/4 LB","price":400},{"label":"HP","qty":"1/2 LB","price":750},{"label":"LB","qty":"1 LB","price":1400}]', 10, 3),
+('TC-BJ-01', 'BLUE JAM', 'premium', '', '[]', 122, 18, 'in-stock', 'Blueberry x Jam genetics. Deep blue hues, sweet berry jam aroma. Smooth hybrid experience.', '["blueberry","hybrid","sweet"]', false, '[{"label":"QP","qty":"1/4 LB","price":350},{"label":"HP","qty":"1/2 LB","price":650},{"label":"LB","qty":"1 LB","price":1200}]', 8, 2),
+
+-- 🌱 DRIVE CATALOG — Greenhouse (Jan 30 batch)
+('TC-ZAL-01', 'ZALATO', 'candy', '', '[]', 115, 20, 'in-stock', 'Zkittlez x Gelato phenotype. Sweet candy terps with a creamy gelato finish.', '["gelato","candy","hybrid"]', false, '[{"label":"QP","qty":"1/4 LB","price":350},{"label":"HP","qty":"1/2 LB","price":650},{"label":"LB","qty":"1 LB","price":1200}]', 9, 2),
+('TC-WG-01', 'WHITE GUMMIES', 'candy', '', '[]', 112, 24, 'in-stock', 'Rare white phenotype. Sweet gummy candy profile with clean white trichome coverage.', '["candy","rare","white"]', false, '[{"label":"QP","qty":"1/4 LB","price":350},{"label":"HP","qty":"1/2 LB","price":650},{"label":"LB","qty":"1 LB","price":1200}]', 7, 2),
+('TC-GUM-01', 'GUMBO', 'gas', '', '[]', 118, 14, 'in-stock', 'Deep earthy gas with unique gumbo terpene profile. Heavy-hitting indica dominant.', '["gas","indica","earthy"]', false, '[{"label":"QP","qty":"1/4 LB","price":350},{"label":"HP","qty":"1/2 LB","price":650},{"label":"LB","qty":"1 LB","price":1200}]', 10, 2),
+('TC-GG-01', 'GALACTIC GUMMIES', 'candy', '', '[]', 115, 16, 'in-stock', 'Out-of-this-world sweet and fruity. Dense gummy terps with cosmic bag appeal.', '["candy","fruity","sweet"]', false, '[{"label":"QP","qty":"1/4 LB","price":350},{"label":"HP","qty":"1/2 LB","price":650},{"label":"LB","qty":"1 LB","price":1200}]', 11, 2),
+('TC-67R-01', '67 RUNTZ', 'exotic', '', '[]', 120, 12, 'in-stock', 'Exclusive Runtz phenotype. High-potency candy profile with classic Runtz bag appeal.', '["runtz","exclusive","candy"]', false, '[{"label":"QP","qty":"1/4 LB","price":350},{"label":"HP","qty":"1/2 LB","price":650},{"label":"LB","qty":"1 LB","price":1200}]', 15, 4)
+
+on conflict (sku) do update set
+  name = excluded.name,
+  category = excluded.category,
+  description = excluded.description,
+  tags = excluded.tags,
+  price = excluded.price,
+  stock = excluded.stock,
+  status = excluded.status,
+  featured = excluded.featured,
+  bulk_tiers = excluded.bulk_tiers;

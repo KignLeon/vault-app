@@ -1,21 +1,20 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { StockBadge } from "./stock-badge";
 import { useTheme } from "@/lib/theme";
 import { useCart } from "@/lib/cart";
-import { type Product } from "@/lib/data";
-import { Plus, Eye, Flame } from "lucide-react";
+import { type NormalizedProduct } from "@/lib/products";
+import { Plus } from "lucide-react";
 import { GasclubLogo } from "./gasclub-logo";
 
 export function ProductCard({
   product,
   onClick,
 }: {
-  product: Product;
-  onClick?: (product: Product) => void;
+  product: NormalizedProduct;
+  onClick?: (product: NormalizedProduct) => void;
 }) {
-  const { fg, border, isDark, cardBg, muted, accent, accentFg } = useTheme();
+  const { fg, border, isDark, cardBg, muted, accent, accentFg, surfaceAccent } = useTheme();
   const { addToCart, setCartOpen } = useCart();
 
   const handleAdd = (e: React.MouseEvent) => {
@@ -34,7 +33,7 @@ export function ProductCard({
     >
       {/* Image */}
       <div
-        className="relative aspect-square w-full overflow-hidden mb-2 border"
+        className="relative aspect-square w-full overflow-hidden mb-2 border product-img-container"
         style={{ borderColor: border, background: isDark ? "#111" : "#f5f5f5" }}
         onClick={() => onClick?.(product)}
       >
@@ -52,37 +51,36 @@ export function ProductCard({
           </div>
         )}
 
-        {/* Sold out overlay */}
-        {product.status === "sold-out" && (
-          <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-            <span className="font-mono text-[10px] tracking-[0.2em] text-white/70">SOLD OUT</span>
-          </div>
-        )}
+        {/* Sold out overlay — hidden from public per user request */}
 
-        {/* Top badges */}
+        {/* Top badges — use accentFg for guaranteed contrast */}
         <div className="absolute top-1.5 left-1.5 flex flex-col gap-1">
           {product.featured && (
-            <span className="font-mono text-[7px] tracking-wider px-1.5 py-0.5" style={{ background: accent, color: accentFg }}>
+            <span
+              className="font-mono text-[7px] tracking-wider px-1.5 py-0.5 accent-badge"
+              style={{ background: accent, color: accentFg }}
+            >
               ⭐ TOP
             </span>
           )}
           {hasBulk && (
-            <span className="font-mono text-[7px] tracking-wider px-1.5 py-0.5" style={{ background: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.08)", color: fg }}>
+            <span
+              className="font-mono text-[7px] tracking-wider px-1.5 py-0.5"
+              style={{ background: surfaceAccent, color: fg, backdropFilter: "blur(4px)" }}
+            >
               💼 BULK
             </span>
           )}
         </div>
 
-        {/* Quick Add */}
-        {product.status !== "sold-out" && (
-          <button
-            onClick={handleAdd}
-            className="absolute bottom-1.5 right-1.5 w-7 h-7 flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 active:scale-90 transition-all"
-            style={{ background: accent, color: accentFg }}
-          >
-            <Plus size={14} />
-          </button>
-        )}
+        {/* Quick Add — always visible */}
+        <button
+          onClick={handleAdd}
+          className="absolute bottom-1.5 right-1.5 w-7 h-7 flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 active:scale-90 transition-all"
+          style={{ background: accent, color: accentFg }}
+        >
+          <Plus size={14} />
+        </button>
       </div>
 
       {/* Label */}
@@ -96,16 +94,6 @@ export function ProductCard({
         {hasBulk && product.bulk && (
           <span className="font-mono text-[8px] tracking-wider" style={{ color: muted }}>
             · QP ${product.bulk[0].price}
-          </span>
-        )}
-      </div>
-
-      {/* Status + urgency */}
-      <div className="flex items-center gap-2 mt-0.5">
-        <StockBadge status={product.status} />
-        {product.viewers && product.viewers > 10 && (
-          <span className="flex items-center gap-0.5 font-mono text-[7px] tracking-wider" style={{ color: muted }}>
-            <Eye size={8} /> {product.viewers}
           </span>
         )}
       </div>

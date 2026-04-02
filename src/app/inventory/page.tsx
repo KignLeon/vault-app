@@ -1,35 +1,42 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AppShell } from "@/components/layout/app-shell";
 import { ProductCard } from "@/components/ui/product-card";
-import { categories, type Product, type BulkTier } from "@/lib/data";
-import { useProducts } from "@/hooks/use-products";
-import { X, Minus, Plus, ShoppingBag, Eye, Flame, MessageCircle, Phone, MapPin, Zap, ChevronDown } from "lucide-react";
-import { StockBadge } from "@/components/ui/stock-badge";
+import { categories } from "@/lib/data";
+import type { BulkTier } from "@/lib/data";
+import { fetchProducts, getLocalProducts, type NormalizedProduct } from "@/lib/products";
+import { X, Minus, Plus, ShoppingBag, Eye, Flame, MessageCircle, Phone, MapPin, Zap } from "lucide-react";
 import { GasclubLogo } from "@/components/ui/gasclub-logo";
 import { useTheme } from "@/lib/theme";
 import { useCart } from "@/lib/cart";
 
 export default function InventoryPage() {
   const [activeCategory, setActiveCategory] = useState("all");
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<NormalizedProduct | null>(null);
   const [qty, setQty] = useState(1);
   const [selectedBulk, setSelectedBulk] = useState<BulkTier | null>(null);
-  const { fg, border, isDark, cardBg, muted, accent, accentFg, accentGlow } = useTheme();
+  const [allProducts, setAllProducts] = useState<NormalizedProduct[]>(() => getLocalProducts());
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const { fg, border, isDark, muted, accent, accentFg, accentGlow, surfaceAccent, surfaceAccentFg } = useTheme();
   const { addToCart, setCartOpen } = useCart();
 
-  const { products, loading } = useProducts();
+  // Background sync from Supabase (local data already rendered)
+  useEffect(() => {
+    fetchProducts().then((data) => {
+      if (data.length > 0) setAllProducts(data);
+    });
+  }, []);
 
   const filtered = useMemo(() =>
     activeCategory === "all"
-      ? products
-      : products.filter((p) => p.category === activeCategory),
-    [activeCategory, products]
+      ? allProducts
+      : allProducts.filter((p) => p.category === activeCategory),
+    [activeCategory, allProducts]
   );
 
-  const openProduct = (product: Product) => {
+  const openProduct = (product: NormalizedProduct) => {
     setSelectedProduct(product);
     setQty(1);
     setSelectedBulk(null);
@@ -89,11 +96,18 @@ export default function InventoryPage() {
       {/* Product count */}
       <div className="mb-4">
         <span className="font-mono text-[10px] tracking-wider" style={{ color: muted }}>
-          {filtered.length} PRODUCTS · BULK PRICING AVAILABLE
+          {loadingProducts ? "LOADING..." : `${filtered.length} PRODUCTS · BULK PRICING AVAILABLE`}
         </span>
       </div>
 
-      {/* Grid */}
+      {/* Grid — with loading skeletons */}
+      {loadingProducts ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="aspect-[3/4] rounded animate-pulse" style={{ background: isDark ? "#111" : "#f0f0f0" }} />
+          ))}
+        </div>
+      ) : (
       <motion.div layout className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
         <AnimatePresence mode="popLayout">
           {filtered.map((product) => (
@@ -104,12 +118,14 @@ export default function InventoryPage() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.25 }}
+
             >
               <ProductCard product={product} onClick={() => openProduct(product)} />
             </motion.div>
           ))}
         </AnimatePresence>
       </motion.div>
+      )}
 
       {/* Product Detail Modal */}
       <AnimatePresence>
@@ -137,10 +153,7 @@ export default function InventoryPage() {
 
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: `1px solid ${border}` }}>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs tracking-[0.2em] font-bold" style={{ color: fg }}>{selectedProduct.sku}</span>
-                  <StockBadge status={selectedProduct.status} />
-                </div>
+                <span className="font-mono text-xs tracking-[0.2em] font-bold" style={{ color: fg }}>{selectedProduct.sku}</span>
                 <button onClick={() => setSelectedProduct(null)} className="p-2 active:scale-90 transition-all" style={{ color: fg }}>
                   <X size={16} />
                 </button>
@@ -170,9 +183,7 @@ export default function InventoryPage() {
                     <Flame size={10} /> {selectedProduct.recentOrders} orders today
                   </span>
                 )}
-                {selectedProduct.status === "low-stock" && (
-                  <span className="font-mono text-[9px] tracking-wider text-red-400 font-bold">LOW STOCK</span>
-                )}
+
               </div>
 
               <div className="p-5 space-y-4">
@@ -208,8 +219,8 @@ export default function InventoryPage() {
                           onClick={() => setSelectedBulk(selectedBulk?.label === tier.label ? null : tier)}
                           className="border p-3 text-center transition-all active:scale-95"
                           style={{
-                            borderColor: selectedBulk?.label === tier.label ? fg : border,
-                            background: selectedBulk?.label === tier.label ? (isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.03)") : "transparent",
+                            borderColor: selectedBulk?.label === tier.label ? accent : border,
+                            background: selectedBulk?.label === tier.label ? surfaceAccent : "transparent",
                           }}
                         >
                           <span className="font-mono text-[10px] tracking-wider font-bold block" style={{ color: fg }}>{tier.qty}</span>
@@ -249,15 +260,13 @@ export default function InventoryPage() {
                 <div className="flex gap-2">
                   <button
                     onClick={handleAdd}
-                    disabled={selectedProduct.status === "sold-out"}
-                    className="flex-1 py-3 font-mono text-[10px] tracking-[0.2em] flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-40"
+                    className="flex-1 py-3 font-mono text-[10px] tracking-[0.2em] flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
                     style={{ background: accent, color: accentFg }}
                   >
                     <ShoppingBag size={14} /> ADD TO CART
                   </button>
                   <button
                     onClick={() => { handleAdd(); setTimeout(() => window.location.href = "/checkout", 300); }}
-                    disabled={selectedProduct.status === "sold-out"}
                     className="flex-1 py-3 font-mono text-[10px] tracking-[0.2em] flex items-center justify-center gap-2 border active:scale-[0.98] transition-transform disabled:opacity-40"
                     style={{ borderColor: accent, color: accent }}
                   >

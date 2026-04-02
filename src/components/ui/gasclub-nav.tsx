@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { GasclubLogo, GasclubWordmark } from "./gasclub-logo";
+import { GasclubNavLogo } from "./gasclub-logo";
 import { cn } from "@/lib/utils";
 import { Home, Package, ShoppingCart, Shield, Ticket, Sun, Moon, ShoppingBag, Settings, LogOut, Check, Palette } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./avatar";
@@ -35,29 +35,25 @@ export function GasclubNav() {
 
   return (
     <>
-      {/* Top Bar */}
+      {/* Top Bar — taller to accommodate huge logo */}
       <nav
-        className="fixed top-0 left-0 z-[99] flex h-14 w-full items-center justify-between px-4 backdrop-blur-md transition-colors duration-300"
+        className="fixed top-0 left-0 z-[99] flex min-h-[88px] w-full items-center justify-between px-3 sm:px-6 backdrop-blur-md transition-colors duration-300"
         style={{
-          background: isDark ? "rgba(0,0,0,0.9)" : "rgba(255,255,255,0.95)",
+          background: isDark ? "rgba(0,0,0,0.85)" : "rgba(255,255,255,0.85)",
           borderBottom: `1px solid ${border}`,
         }}
       >
-        <Link href="/home" className="flex items-center gap-2">
-          <GasclubLogo size={24} className="transition-colors" style={{ color: fg }} accentColor={accent} />
-          <span
-            className="font-mono text-[10px] font-bold tracking-[0.2em] transition-colors hidden sm:inline"
-            style={{ color: fg }}
-          >
-            GAS<span style={{ color: accent }}>CLUB</span><span style={{ opacity: 0.4, fontSize: "0.85em" }}>247</span>
-          </span>
+        {/* Logo — fills the branding area with minimal padding */}
+        <Link href="/home" className="flex items-center py-2 -my-2 overflow-visible">
+          <GasclubNavLogo isDark={isDark} brightness={brightness} />
         </Link>
 
-        <div className="flex items-center gap-2">
+        {/* Action buttons — tighter on mobile */}
+        <div className="flex items-center gap-1 sm:gap-2 nav-actions">
           {/* Theme + Color Toggle */}
           <button
             onClick={() => setShowPanel(!showPanel)}
-            className="p-2 rounded-full transition-all active:scale-90"
+            className="p-2 rounded-full transition-all active:scale-90 nav-action-btn"
             style={{ color: fg }}
             aria-label="Adjust theme & color"
           >
@@ -67,7 +63,7 @@ export function GasclubNav() {
           {/* Cart */}
           <button
             onClick={() => setCartOpen(true)}
-            className="relative p-2 rounded-full transition-all active:scale-90"
+            className="relative p-2 rounded-full transition-all active:scale-90 nav-action-btn"
             style={{ color: fg }}
             aria-label="Cart"
           >
@@ -85,7 +81,7 @@ export function GasclubNav() {
           {/* Settings */}
           <Link
             href="/settings"
-            className="p-2 rounded-full transition-all active:scale-90"
+            className="p-2 rounded-full transition-all active:scale-90 nav-action-btn"
             style={{ color: fg }}
             aria-label="Settings"
           >
@@ -134,7 +130,7 @@ export function GasclubNav() {
                       <Settings size={12} /> SETTINGS
                     </Link>
                     <button
-                      onClick={async () => { await logout(); setShowUserMenu(false); }}
+                      onClick={() => { logout(); setShowUserMenu(false); }}
                       className="w-full flex items-center gap-2 px-3 py-2 font-mono text-[10px] tracking-wider transition-colors hover:bg-white/5 text-left"
                       style={{ color: fg }}
                     >
@@ -148,14 +144,14 @@ export function GasclubNav() {
         </div>
       </nav>
 
-      {/* Theme + Color Picker Panel */}
+      {/* Theme + Color Picker Panel — full-width on mobile */}
       {showPanel && (
         <>
           <div className="fixed inset-0 z-[97]" onClick={() => setShowPanel(false)} />
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="fixed top-14 right-4 z-[98] w-[340px] border p-5"
+            className="fixed top-[92px] right-4 z-[98] w-[340px] border p-5 theme-panel-mobile shadow-2xl"
             style={{
               background: isDark ? "rgba(0,0,0,0.95)" : "rgba(255,255,255,0.98)",
               borderColor: border,
@@ -190,40 +186,49 @@ export function GasclubNav() {
               {/* Right: Color Profiles */}
               <div className="flex-1 min-w-0">
                 <p className="font-mono text-[9px] tracking-[0.2em] mb-3" style={{ color: fg, opacity: 0.5 }}>
-                  COLOR
+                  THEME
                 </p>
-                <div className="grid grid-cols-4 gap-1.5">
+                <div className="grid grid-cols-5 gap-1.5">
                   {COLOR_PROFILES.map((profile) => {
                     const isActive = colorProfile.name === profile.name;
-                    const swatchColor = `hsl(${profile.hue}, ${profile.saturation}%, ${isDark ? 55 : 45}%)`;
+                    const isNeutral = profile.saturation === 0;
+                    const l = isDark ? 55 : 45;
+                    const swatchGrad = isNeutral
+                      ? (isDark ? 'linear-gradient(135deg, hsl(0,0%,45%), hsl(0,0%,65%))' : 'linear-gradient(135deg, hsl(0,0%,30%), hsl(0,0%,50%))')
+                      : `linear-gradient(135deg, hsl(${profile.hue}, ${profile.saturation}%, ${l}%), hsl(${profile.hue2}, ${profile.saturation2}%, ${l}%))`;
+                    const glowColor = isNeutral
+                      ? (isDark ? 'rgba(160,160,160,0.5)' : 'rgba(80,80,80,0.4)')
+                      : `hsla(${profile.hue}, ${profile.saturation}%, ${l}%, 0.5)`;
                     return (
                       <button
                         key={profile.name}
                         onClick={() => setColorProfile(profile.name)}
-                        className="flex flex-col items-center gap-1 p-1.5 rounded transition-all active:scale-90"
+                        className="flex flex-col items-center gap-1 p-1 rounded transition-all active:scale-90"
                         style={{
                           background: isActive
-                            ? (isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.04)")
+                            ? (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.03)")
                             : "transparent",
                         }}
                         title={profile.name}
                       >
                         <div
-                          className="w-6 h-6 rounded-full flex items-center justify-center transition-all"
+                          className="w-5 h-5 rounded-full flex items-center justify-center transition-all"
                           style={{
-                            background: swatchColor,
-                            boxShadow: isActive ? `0 0 0 2px ${isDark ? '#fff' : '#000'}, 0 0 8px ${swatchColor}` : 'none',
+                            background: swatchGrad,
+                            boxShadow: isActive
+                              ? `0 0 0 2px ${isDark ? '#fff' : '#000'}, 0 0 10px ${glowColor}`
+                              : 'none',
                           }}
                         >
                           {isActive && (
-                            <Check size={10} style={{ color: "#fff" }} />
+                            <Check size={9} style={{ color: "#fff" }} />
                           )}
                         </div>
                         <span
-                          className="font-mono text-[7px] tracking-wider leading-none"
+                          className="font-mono text-[6px] tracking-wider leading-none truncate w-full text-center"
                           style={{ color: isActive ? fg : muted }}
                         >
-                          {profile.name.toUpperCase().slice(0, 6)}
+                          {profile.name.toUpperCase().slice(0, 7)}
                         </span>
                       </button>
                     );
@@ -293,4 +298,3 @@ export function GasclubNav() {
     </>
   );
 }
-

@@ -50,3 +50,4 @@ _assets/
 typings_gg.html
 yeezy_com.html
 walkthrough.md.resolved
+.env*.local

@@ -47,26 +47,24 @@ export default function AccessPage() {
     }
   }, [isAuthenticated, entering, router]);
 
-  const handleAccountSubmit = useCallback((data: { username: string; password: string; avatar?: string }) => {
+  const handleAccountSubmit = useCallback(async (data: { username: string; password: string; avatar?: string }) => {
     setSubmitting(true);
     setError("");
 
-    setTimeout(async () => {
-      let result;
-      if (authMode === "signup") {
-        result = await signup(data.username, data.password, data.avatar);
-      } else {
-        result = await login(data.username, data.password);
-      }
+    let result;
+    if (authMode === "signup") {
+      result = await signup(data.username, data.password, data.avatar);
+    } else {
+      result = await login(data.username, data.password);
+    }
 
-      if (result.success) {
-        setEntering(true);
-        setTimeout(() => router.push("/home"), 800);
-      } else {
-        setError(result.error || "Something went wrong");
-      }
-      setSubmitting(false);
-    }, 600);
+    if (result.success) {
+      setEntering(true);
+      setTimeout(() => router.push("/home"), 800);
+    } else {
+      setError(result.error || "Something went wrong");
+    }
+    setSubmitting(false);
   }, [authMode, signup, login, router]);
 
   const handleAdminSubmit = useCallback(async (e: React.FormEvent) => {
@@ -123,8 +121,8 @@ export default function AccessPage() {
               transition={{ duration: 0.8, delay: 0.1 }}
               className="flex flex-col items-center gap-3"
             >
-              <GasclubLogo size={48} className="text-white" accentColor={accentColor} />
-              <GasclubWordmark className="text-white/70" accentColor={accentColor} />
+              <GasclubLogo size={56} className="text-white" accentColor={accentColor} />
+              <GasclubWordmark className="text-white/70" accentColor={accentColor} size="large" />
             </motion.div>
 
             {/* Mode Switcher: Account vs Admin */}
@@ -253,7 +251,7 @@ export default function AccessPage() {
               animate={{ scale: [1, 1.2, 0.8], opacity: [1, 1, 0] }}
               transition={{ duration: 0.8 }}
             >
-              <GasclubLogo size={48} className="text-white" accentColor={accentColor} />
+              <GasclubLogo size={56} className="text-white" accentColor={accentColor} />
             </motion.div>
           </motion.div>
         )}

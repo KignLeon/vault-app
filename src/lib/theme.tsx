@@ -2,26 +2,73 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 
-// ---- COLOR PROFILES ----
+// ---- COLOR PROFILES (21st.dev-inspired dynamic themes) ----
 export interface ColorProfile {
   name: string;
   hue: number;
   saturation: number;
+  hue2: number;        // secondary hue for gradient accents
+  saturation2: number;
   emoji: string;
 }
 
 export const COLOR_PROFILES: ColorProfile[] = [
-  { name: "Midnight", hue: 220, saturation: 60, emoji: "🌙" },
-  { name: "Sunset", hue: 25, saturation: 85, emoji: "🌅" },
-  { name: "Sakura", hue: 340, saturation: 65, emoji: "🌸" },
-  { name: "Mizu", hue: 190, saturation: 70, emoji: "🌊" },
-  { name: "Phantom", hue: 270, saturation: 50, emoji: "👻" },
-  { name: "Cali", hue: 45, saturation: 90, emoji: "☀️" },
-  { name: "Aurora", hue: 160, saturation: 65, emoji: "🌿" },
-  { name: "Ember", hue: 5, saturation: 80, emoji: "🔥" },
+  { name: "Midnight",   hue: 220, saturation: 70,  hue2: 250, saturation2: 60, emoji: "🌙" },
+  { name: "Sunset",     hue: 25,  saturation: 90,  hue2: 350, saturation2: 75, emoji: "🌅" },
+  { name: "Ocean",      hue: 195, saturation: 85,  hue2: 210, saturation2: 70, emoji: "🌊" },
+  { name: "Bubblegum",  hue: 325, saturation: 75,  hue2: 290, saturation2: 60, emoji: "🍬" },
+  { name: "Amber",      hue: 38,  saturation: 92,  hue2: 28,  saturation2: 85, emoji: "✨" },
+  { name: "Amethyst",   hue: 270, saturation: 55,  hue2: 290, saturation2: 45, emoji: "💎" },
+  { name: "Forest",     hue: 145, saturation: 70,  hue2: 160, saturation2: 55, emoji: "🌲" },
+  { name: "Rosewater",  hue: 345, saturation: 50,  hue2: 10,  saturation2: 40, emoji: "🌷" },
+  { name: "Neon",       hue: 265, saturation: 85,  hue2: 180, saturation2: 80, emoji: "⚡" },
+  { name: "Carbon",     hue: 0,   saturation: 0,   hue2: 0,   saturation2: 0,  emoji: "🖤" },
 ];
 
 const DEFAULT_PROFILE = COLOR_PROFILES[0]; // Midnight
+
+// ---- WCAG CONTRAST UTILITIES ----
+// Converts HSL → approximate sRGB → relative luminance for WCAG contrast checks
+
+function hslToRgb(h: number, s: number, l: number): [number, number, number] {
+  const sn = s / 100;
+  const ln = l / 100;
+  const c = (1 - Math.abs(2 * ln - 1)) * sn;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = ln - c / 2;
+  let r1 = 0, g1 = 0, b1 = 0;
+  if (h < 60) { r1 = c; g1 = x; }
+  else if (h < 120) { r1 = x; g1 = c; }
+  else if (h < 180) { g1 = c; b1 = x; }
+  else if (h < 240) { g1 = x; b1 = c; }
+  else if (h < 300) { r1 = x; b1 = c; }
+  else { r1 = c; b1 = x; }
+  return [r1 + m, g1 + m, b1 + m];
+}
+
+function srgbLuminance(r: number, g: number, b: number): number {
+  const linearize = (v: number) => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  return 0.2126 * linearize(r) + 0.7152 * linearize(g) + 0.0722 * linearize(b);
+}
+
+function hslLuminance(h: number, s: number, l: number): number {
+  const [r, g, b] = hslToRgb(h, s, l);
+  return srgbLuminance(r, g, b);
+}
+
+function contrastRatio(l1: number, l2: number): number {
+  const lighter = Math.max(l1, l2);
+  const darker = Math.min(l1, l2);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+/** Returns '#000' or '#fff' — whichever has better contrast against the given HSL color */
+function bestTextColor(h: number, s: number, l: number): string {
+  const lum = hslLuminance(h, s, l);
+  const contrastBlack = contrastRatio(lum, 0);    // black luminance ≈ 0
+  const contrastWhite = contrastRatio(lum, 1);    // white luminance ≈ 1
+  return contrastBlack > contrastWhite ? "#000" : "#fff";
+}
 
 // ---- CONTEXT ----
 interface ThemeContextType {
@@ -37,7 +84,11 @@ interface ThemeContextType {
   accent: string;
   accentMuted: string;
   accentGlow: string;
-  accentFg: string;
+  accentFg: string;          // best-contrast text color ON accent bg
+  accentGradient: string;
+  accentGradientFg: string;  // best-contrast text color ON gradient midpoint
+  surfaceAccent: string;     // semi-transparent accent safe for tinted surfaces
+  surfaceAccentFg: string;   // readable text on surfaceAccent
   colorProfile: ColorProfile;
   setColorProfile: (profileName: string) => void;
 }
@@ -100,24 +151,65 @@ export function ThemeProvider({ children, defaultBrightness = 0 }: { children: R
   const muted = `hsl(0, 0%, ${Math.max(0, Math.min(100, mutedL))}%)`;
   const cardBg = `hsl(0, 0%, ${Math.max(0, Math.min(100, cardL))}%)`;
 
-  // ---- ACCENT SYSTEM ----
-  const { hue, saturation } = colorProfile;
+  // ---- ACCENT SYSTEM (brightness + hue aware) ----
+  const { hue, saturation, hue2, saturation2 } = colorProfile;
+  const isNeutral = saturation === 0; // Carbon theme
+
   // Accent lightness adapts to theme brightness for contrast
-  const accentL = isDark ? 62 : 45;
+  // At low brightness → lighter accents; at high brightness → darker accents
+  const accentL = isDark
+    ? Math.max(50, 62 - Math.floor((50 - brightness) * 0.15))
+    : Math.min(50, 45 + Math.floor((brightness - 50) * 0.1));
+
   const accentMutedL = isDark ? 35 : 70;
   const accentGlowOpacity = isDark ? 0.25 : 0.15;
 
-  const accent = `hsl(${hue}, ${saturation}%, ${accentL}%)`;
-  const accentMuted = `hsl(${hue}, ${saturation * 0.6}%, ${accentMutedL}%)`;
-  const accentGlow = `hsla(${hue}, ${saturation}%, ${accentL}%, ${accentGlowOpacity})`;
-  // Foreground for text on accent backgrounds
-  const accentFg = isDark ? "#000" : "#fff";
+  const accent = isNeutral
+    ? (isDark ? 'hsl(0, 0%, 65%)' : 'hsl(0, 0%, 35%)')
+    : `hsl(${hue}, ${saturation}%, ${accentL}%)`;
+
+  const accentMuted = isNeutral
+    ? (isDark ? 'hsl(0, 0%, 40%)' : 'hsl(0, 0%, 60%)')
+    : `hsl(${hue}, ${Math.round(saturation * 0.6)}%, ${accentMutedL}%)`;
+
+  const accentGlow = isNeutral
+    ? `hsla(0, 0%, ${isDark ? 65 : 35}%, ${accentGlowOpacity})`
+    : `hsla(${hue}, ${saturation}%, ${accentL}%, ${accentGlowOpacity})`;
+
+  // Gradient accent using both hues for dynamic UI (buttons, badges, etc.)
+  const accentGradient = isNeutral
+    ? (isDark ? 'linear-gradient(135deg, hsl(0,0%,50%), hsl(0,0%,70%))' : 'linear-gradient(135deg, hsl(0,0%,30%), hsl(0,0%,45%))')
+    : `linear-gradient(135deg, hsl(${hue}, ${saturation}%, ${accentL}%), hsl(${hue2}, ${saturation2}%, ${accentL}%))`;
+
+  // ---- BRIGHTNESS-AWARE FOREGROUND ON ACCENT ----
+  // Computes the actual best-contrast text color using WCAG luminance
+  const accentFg = isNeutral
+    ? bestTextColor(0, 0, isDark ? 65 : 35)
+    : bestTextColor(hue, saturation, accentL);
+
+  // Gradient midpoint contrast
+  const midHue = Math.round((hue + hue2) / 2);
+  const midSat = Math.round((saturation + saturation2) / 2);
+  const accentGradientFg = isNeutral
+    ? bestTextColor(0, 0, isDark ? 60 : 38)
+    : bestTextColor(midHue, midSat, accentL);
+
+  // ---- SURFACE ACCENT (tinted surface that preserves text readability) ----
+  // Uses low alpha so the bg color shows through, keeping text readable
+  const surfaceAlpha = isDark ? 0.12 : 0.08;
+  const surfaceAccent = isNeutral
+    ? `hsla(0, 0%, ${isDark ? 65 : 35}%, ${surfaceAlpha})`
+    : `hsla(${hue}, ${saturation}%, ${accentL}%, ${surfaceAlpha})`;
+
+  // Text on surface accent is just the regular fg — the tint is too subtle to break contrast
+  const surfaceAccentFg = fg;
 
   return (
     <ThemeContext.Provider value={{
       brightness, setBrightness, isDark,
       bg, fg, border, muted, cardBg,
-      accent, accentMuted, accentGlow, accentFg,
+      accent, accentMuted, accentGlow, accentFg, accentGradient, accentGradientFg,
+      surfaceAccent, surfaceAccentFg,
       colorProfile, setColorProfile,
     }}>
       <div

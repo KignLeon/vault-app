@@ -1,13 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { AppShell } from "@/components/layout/app-shell";
 import { useTheme } from "@/lib/theme";
 import { useCart } from "@/lib/cart";
-import { type Product } from "@/lib/data";
-import { useProducts } from "@/hooks/use-products";
-import { Ticket, Clock, Zap, Tag, ShoppingBag, Eye, Flame } from "lucide-react";
+import { fetchProducts, type NormalizedProduct } from "@/lib/products";
+import { Ticket, Clock, Zap, Tag, ShoppingBag } from "lucide-react";
 import { StockBadge } from "@/components/ui/stock-badge";
 import { GasclubLogo } from "@/components/ui/gasclub-logo";
 
@@ -25,13 +24,13 @@ interface Deal {
 }
 
 const deals: Deal[] = [
-  { id: "d1", title: "PLATINUM LEMON CHERRY", description: "Member-exclusive pricing. 48hr window, limited units.", discount: "20% OFF", originalPrice: 120, dealPrice: 96, productId: "p1", expiresIn: "47h 23m", type: "flash", limited: true },
-  { id: "d2", title: "PINK PANTHER — 6 LEFT", description: "Last units of this boutique drop. Grab before it's gone.", discount: "15% OFF", originalPrice: 110, dealPrice: 94, productId: "p2", expiresIn: "23h 45m", type: "flash", limited: true },
-  { id: "d3", title: "UNCLE SNOOP — BULK", description: "QP / HP / LB pricing available. Wholesale tiers loaded.", discount: "BULK RATE", originalPrice: 115, dealPrice: 92, productId: "p3", expiresIn: "Ongoing", type: "bulk", limited: false },
-  { id: "d4", title: "LEMON DIOR RUNTZ", description: "Exotic lemon-forward Runtz. Premium indoor batch.", discount: "18% OFF", originalPrice: 125, dealPrice: 103, productId: "p4", expiresIn: "35h 10m", type: "flash", limited: true },
+  { id: "d1", title: "PLATINUM LEMON CHERRY", description: "Member-exclusive pricing. 48hr window, limited units.", discount: "20% OFF", originalPrice: 120, dealPrice: 96, productId: "TC-PLC-01", expiresIn: "47h 23m", type: "flash", limited: true },
+  { id: "d2", title: "PINK PANTHER — 6 LEFT", description: "Last units of this boutique drop. Grab before it's gone.", discount: "15% OFF", originalPrice: 110, dealPrice: 94, productId: "TC-PP-01", expiresIn: "23h 45m", type: "flash", limited: true },
+  { id: "d3", title: "UNCLE SNOOP — BULK", description: "QP / HP / LB pricing available. Wholesale tiers loaded.", discount: "BULK RATE", originalPrice: 115, dealPrice: 92, productId: "TC-US-01", expiresIn: "Ongoing", type: "bulk", limited: false },
+  { id: "d4", title: "LEMON DIOR RUNTZ", description: "Exotic lemon-forward Runtz. Premium indoor batch.", discount: "18% OFF", originalPrice: 125, dealPrice: 103, productId: "TC-LDR-01", expiresIn: "35h 10m", type: "flash", limited: true },
   { id: "d5", title: "PROMO CODE: PROMO1", description: "25% off your first order. Any product, any quantity. One-time use per account.", discount: "25% OFF", originalPrice: 0, dealPrice: 0, expiresIn: "7 days", type: "member", limited: false },
-  { id: "d6", title: "WARHEADZ — RESTOCKED", description: "Sour gas profile back in inventory. Heavy hitter.", discount: "10% OFF", originalPrice: 118, dealPrice: 106, productId: "p5", expiresIn: "Ongoing", type: "member", limited: false },
-  { id: "d7", title: "WEDDING CAKE — INDOOR", description: "Premium indoor vanilla/earthy profile. Dense trichomes.", discount: "BULK RATE", originalPrice: 120, dealPrice: 96, productId: "p8", expiresIn: "Ongoing", type: "bulk", limited: false },
+  { id: "d6", title: "WARHEADZ — RESTOCKED", description: "Sour gas profile back in inventory. Heavy hitter.", discount: "10% OFF", originalPrice: 118, dealPrice: 106, productId: "TC-WH-01", expiresIn: "Ongoing", type: "member", limited: false },
+  { id: "d7", title: "WEDDING CAKE — INDOOR", description: "Premium indoor vanilla/earthy profile. Dense trichomes.", discount: "BULK RATE", originalPrice: 120, dealPrice: 96, productId: "TC-WC-01", expiresIn: "Ongoing", type: "bulk", limited: false },
   { id: "d8", title: "ANY 2 STRAINS BUNDLE", description: "Mix and match any two products. Stack with PROMO1.", discount: "SAVE $20", originalPrice: 230, dealPrice: 210, expiresIn: "5 days", type: "member", limited: false },
 ];
 
@@ -39,14 +38,18 @@ const typeBg: Record<string, string> = { flash: "text-red-400", member: "text-gr
 const typeIcon = { flash: Zap, member: Ticket, bulk: Tag };
 
 export default function DealsPage() {
-  const { fg, border, isDark, cardBg, muted, accent, accentFg, accentGlow } = useTheme();
+  const { fg, border, isDark, cardBg, muted, accent, accentFg } = useTheme();
   const { addToCart, setCartOpen } = useCart();
-  const { products } = useProducts();
   const [claimed, setClaimed] = useState<Set<string>>(new Set());
+  const [allProducts, setAllProducts] = useState<NormalizedProduct[]>([]);
+
+  useEffect(() => {
+    fetchProducts().then(setAllProducts);
+  }, []);
 
   const handleClaim = (deal: Deal) => {
     if (deal.productId) {
-      const product = products.find((p) => p.id === deal.productId);
+      const product = allProducts.find((p) => p.sku === deal.productId);
       if (product) { addToCart(product, 1); setCartOpen(true); }
     }
     setClaimed((prev) => new Set(prev).add(deal.id));
@@ -67,7 +70,7 @@ export default function DealsPage() {
         {deals.map((deal, i) => {
           const Icon = typeIcon[deal.type];
           const isClaimed = claimed.has(deal.id);
-          const product = deal.productId ? products.find((p) => p.id === deal.productId) : null;
+          const product = deal.productId ? allProducts.find((p: NormalizedProduct) => p.sku === deal.productId) : null;
 
           return (
             <motion.div

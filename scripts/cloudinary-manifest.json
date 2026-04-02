@@ -1,0 +1,72 @@
+{
+  "WARHEADZ": {
+    "publicId": "gasclub247/products/pre-rolls/warheadz-preroll",
+    "url": "https://res.cloudinary.com/ddnhp0hzd/image/upload/v1/gasclub247/products/pre-rolls/warheadz-preroll.jpg?_a=BAMAOGRk0",
+    "category": "pre-rolls"
+  },
+  "SUPREME LATTO": {
+    "publicId": "gasclub247/products/pre-rolls/supreme-latto-preroll",
+    "url": "https://res.cloudinary.com/ddnhp0hzd/image/upload/v1/gasclub247/products/pre-rolls/supreme-latto-preroll.jpg?_a=BAMAOGRk0",
+    "category": "pre-rolls"
+  },
+  "PINK PANTHER": {
+    "publicId": "gasclub247/products/pre-rolls/pink-panther-preroll",
+    "url": "https://res.cloudinary.com/ddnhp0hzd/image/upload/v1/gasclub247/products/pre-rolls/pink-panther-preroll.jpg?_a=BAMAOGRk0",
+    "category": "pre-rolls"
+  },
+  "LEMON DIOR RUNTZ": {
+    "publicId": "gasclub247/products/pre-rolls/lemondiorruntz-preroll",
+    "url": "https://res.cloudinary.com/ddnhp0hzd/image/upload/v1/gasclub247/products/pre-rolls/lemondiorruntz-preroll.jpg?_a=BAMAOGRk0",
+    "category": "pre-rolls"
+  },
+  "BERRY POP": {
+    "publicId": "gasclub247/products/pre-rolls/berry-pop-preroll",
+    "url": "https://res.cloudinary.com/ddnhp0hzd/image/upload/v1/gasclub247/products/pre-rolls/berry-pop-preroll.jpg?_a=BAMAOGRk0",
+    "category": "pre-rolls"
+  },
+  "RAINBOW BELTS": {
+    "publicId": "gasclub247/products/indoors/rainbow-belts",
+    "url": "https://res.cloudinary.com/ddnhp0hzd/image/upload/v1/gasclub247/products/indoors/rainbow-belts.jpg?_a=BAMAOGRk0",
+    "category": "indoors"
+  },
+  "LEMON BERRY GELATO": {
+    "publicId": "gasclub247/products/indoors/lemon-berry-gelato",
+    "url": "https://res.cloudinary.com/ddnhp0hzd/image/upload/v1/gasclub247/products/indoors/lemon-berry-gelato.jpg?_a=BAMAOGRk0",
+    "category": "indoors"
+  },
+  "BLUE JAM": {
+    "publicId": "gasclub247/products/indoors/blue-jam",
+    "url": "https://res.cloudinary.com/ddnhp0hzd/image/upload/v1/gasclub247/products/indoors/blue-jam.jpg?_a=BAMAOGRk0",
+    "category": "indoors"
+  },
+  "ZALATO": {
+    "publicId": "gasclub247/products/greenhouse/zalato",
+    "url": "https://res.cloudinary.com/ddnhp0hzd/image/upload/v1/gasclub247/products/greenhouse/zalato.jpg?_a=BAMAOGRk0",
+    "category": "greenhouse"
+  },
+  "WHITE GUMMIES": {
+    "publicId": "gasclub247/products/greenhouse/white-gummies",
+    "url": "https://res.cloudinary.com/ddnhp0hzd/image/upload/v1/gasclub247/products/greenhouse/white-gummies.jpg?_a=BAMAOGRk0",
+    "category": "greenhouse"
+  },
+  "GUMBO": {
+    "publicId": "gasclub247/products/greenhouse/gumbo",
+    "url": "https://res.cloudinary.com/ddnhp0hzd/image/upload/v1/gasclub247/products/greenhouse/gumbo.jpg?_a=BAMAOGRk0",
+    "category": "greenhouse"
+  },
+  "GALACTIC GUMMIES": {
+    "publicId": "gasclub247/products/greenhouse/galactic-gummies",
+    "url": "https://res.cloudinary.com/ddnhp0hzd/image/upload/v1/gasclub247/products/greenhouse/galactic-gummies.jpg?_a=BAMAOGRk0",
+    "category": "greenhouse"
+  },
+  "CANDY RUNTZ": {
+    "publicId": "gasclub247/products/greenhouse/candy-runtz",
+    "url": "https://res.cloudinary.com/ddnhp0hzd/image/upload/v1/gasclub247/products/greenhouse/candy-runtz.jpg?_a=BAMAOGRk0",
+    "category": "greenhouse"
+  },
+  "67 RUNTZ": {
+    "publicId": "gasclub247/products/greenhouse/67-runtz",
+    "url": "https://res.cloudinary.com/ddnhp0hzd/image/upload/v1/gasclub247/products/greenhouse/67-runtz.jpg?_a=BAMAOGRk0",
+    "category": "greenhouse"
+  }
+}

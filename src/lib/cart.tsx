@@ -1,18 +1,18 @@
 "use client";
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
-import { type Product, shippingOptions } from "@/lib/data";
+import type { NormalizedProduct } from "@/lib/products";
+import { shippingOptions } from "@/lib/data";
 import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/lib/auth";
 
 export interface CartItem {
-  product: Product;
+  product: NormalizedProduct;
   qty: number;
 }
 
 export interface CompletedOrder {
-  id: string; // The DB UUID
-  display_id: string; // E.g., GC-XXX
+  id: string;           // human-readable order number: GC-XXXXXXXX
+  dbId?: string;        // Supabase UUID
   items: CartItem[];
   subtotal: number;
   discount: number;
@@ -20,17 +20,19 @@ export interface CompletedOrder {
   total: number;
   promoCode?: string;
   shippingMethod: string;
+  paymentMethod: string;
   createdAt: string;
 }
 
 interface CartContextType {
   items: CartItem[];
-  addToCart: (product: Product, qty?: number) => void;
+  addToCart: (product: NormalizedProduct, qty?: number) => void;
   removeFromCart: (productId: string) => void;
   updateQty: (productId: string, qty: number) => void;
   clearCart: () => void;
   itemCount: number;
   subtotal: number;
+  // Promo
   promoCode: string;
   setPromoCode: (code: string) => void;
   promoApplied: boolean;
@@ -38,66 +40,72 @@ interface CartContextType {
   applyPromo: () => void;
   removePromo: () => void;
   discount: number;
+  // Shipping
   shippingMethod: string;
   setShippingMethod: (id: string) => void;
   shippingCost: number;
+  // Total
   total: number;
+  // Orders
   orders: CompletedOrder[];
-  placeOrder: () => Promise<CompletedOrder | null>;
+  placeOrder: (info: {
+    name: string;
+    email: string;
+    address: string;
+    city: string;
+    state: string;
+    zip: string;
+    notes: string;
+    paymentMethod: string;
+  }) => Promise<CompletedOrder | null>;
+  // Cart open state
   isCartOpen: boolean;
   setCartOpen: (v: boolean) => void;
+  isPlacingOrder: boolean;
 }
 
 const CartContext = createContext<CartContextType | null>(null);
 
+// MVP promo codes — will also be validated server-side
 const PROMO_CODES: Record<string, { discount: number; oneTime: boolean }> = {
   PROMO1: { discount: 0.25, oneTime: true },
 };
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
   const [items, setItems] = useState<CartItem[]>([]);
   const [promoCode, setPromoCode] = useState("");
   const [promoApplied, setPromoApplied] = useState(false);
   const [promoError, setPromoError] = useState("");
   const [appliedPromoCode, setAppliedPromoCode] = useState("");
   const [shippingMethod, setShippingMethod] = useState("standard");
+  const [usedPromoCodes, setUsedPromoCodes] = useState<string[]>([]);
   const [orders, setOrders] = useState<CompletedOrder[]>([]);
   const [isCartOpen, setCartOpen] = useState(false);
-  const [initialLoad, setInitialLoad] = useState(false);
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
-  // Sync Cart to DB or initial fetch
+  // Load cart + orders from local session storage for this tab
+  // (server persistence happens via orders table, cart is session-scoped for speed)
   useEffect(() => {
-    if (user && !initialLoad) {
-      // Attempt to load existing orders from DB
-      supabase.from('orders').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).then(({ data }) => {
-        if (data) {
-          setOrders(data.map(d => ({
-            id: d.id,
-            display_id: d.display_id,
-            items: d.items,
-            subtotal: d.subtotal,
-            discount: d.discount,
-            shipping: d.shipping,
-            total: d.total,
-            promoCode: "", // We could store promo codes on DB
-            shippingMethod: d.shipping_method,
-            createdAt: d.created_at
-          })));
-        }
-      });
-      setInitialLoad(true);
-    }
-  }, [user, initialLoad]);
+    try {
+      const savedCart = sessionStorage.getItem("gc247_cart");
+      if (savedCart) setItems(JSON.parse(savedCart));
+      const savedPromos = localStorage.getItem("gc247_used_promos");
+      if (savedPromos) setUsedPromoCodes(JSON.parse(savedPromos));
+    } catch {}
+  }, []);
 
-  // DB-driven cart requires syncing `items` array to the `users` table if we want persistence across devices.
-  // For now, MVP approach: keep it in React state until `placeOrder`. If user is logged in, placeOrder goes to DB!
+  // Persist cart to sessionStorage on change
+  useEffect(() => {
+    try { sessionStorage.setItem("gc247_cart", JSON.stringify(items)); } catch {}
+  }, [items]);
 
-  const addToCart = useCallback((product: Product, qty = 1) => {
+  const addToCart = useCallback((product: NormalizedProduct, qty = 1) => {
     setItems((prev) => {
       const existing = prev.find((i) => i.product.id === product.id);
       if (existing) {
-        return prev.map((i) => i.product.id === product.id ? { ...i, qty: i.qty + qty } : i);
+        return prev.map((i) =>
+          i.product.id === product.id ? { ...i, qty: i.qty + qty } : i
+        );
       }
       return [...prev, { product, qty }];
     });
@@ -121,6 +129,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setAppliedPromoCode("");
     setPromoCode("");
     setPromoError("");
+    try { sessionStorage.removeItem("gc247_cart"); } catch {}
   }, []);
 
   const subtotal = items.reduce((sum, i) => sum + i.product.price * i.qty, 0);
@@ -133,10 +142,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setTimeout(() => setPromoError(""), 3000);
       return;
     }
+    if (promo.oneTime && usedPromoCodes.includes(code)) {
+      setPromoError(`${code} has already been used on this account.`);
+      setTimeout(() => setPromoError(""), 4000);
+      return;
+    }
     setPromoApplied(true);
     setAppliedPromoCode(code);
     setPromoError("");
-  }, [promoCode]);
+  }, [promoCode, usedPromoCodes]);
 
   const removePromo = useCallback(() => {
     setPromoApplied(false);
@@ -144,67 +158,105 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setPromoCode("");
   }, []);
 
-  const discount = promoApplied && appliedPromoCode ? subtotal * (PROMO_CODES[appliedPromoCode]?.discount || 0) : 0;
+  const discount = promoApplied && appliedPromoCode
+    ? subtotal * (PROMO_CODES[appliedPromoCode]?.discount || 0)
+    : 0;
+
   const ship = shippingOptions.find((s) => s.id === shippingMethod);
   const shippingCost = items.length > 0 ? (ship?.price || 8) : 0;
   const total = Math.max(0, subtotal - discount + shippingCost);
   const itemCount = items.reduce((sum, i) => sum + i.qty, 0);
 
-  const placeOrder = useCallback(async (): Promise<CompletedOrder | null> => {
+  // ── PLACE ORDER — DB-persisted ──────────────────────────────────────────────
+  const placeOrder = useCallback(async (info: {
+    name: string;
+    email: string;
+    address: string;
+    city: string;
+    state: string;
+    zip: string;
+    notes: string;
+    paymentMethod: string;
+  }): Promise<CompletedOrder | null> => {
     if (items.length === 0) return null;
+    setIsPlacingOrder(true);
 
-    const display_id = `GC-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    try {
+      // Get current session token for auth header
+      const { data: { session } } = await supabase.auth.getSession();
 
-    // Proceed to DB Insert if User is Auth'd
-    let orderId = `local_${Date.now()}`;
-    if (user) {
-      const { data, error } = await supabase.from('orders').insert({
-        display_id,
-        user_id: user.id,
-        items,
+      const payload = {
+        items: items.map((i) => ({
+          id: i.product.id,
+          sku: i.product.sku,
+          name: i.product.name,
+          price: i.product.price,
+          qty: i.qty,
+          image: i.product.image,
+        })),
+        subtotal,
+        discount,
+        shippingCost,
+        total,
+        promoCode: promoApplied ? appliedPromoCode : null,
+        shippingMethod,
+        paymentMethod: info.paymentMethod,
+        name: info.name,
+        email: info.email,
+        address: info.address,
+        city: info.city,
+        state: info.state,
+        zip: info.zip,
+        notes: info.notes,
+        userId: session?.user?.id || null,
+      };
+
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const { error } = await res.json();
+        console.error("[placeOrder] API error:", error);
+        return null;
+      }
+
+      const { orderId, orderDbId } = await res.json();
+
+      // Mark promo as used
+      if (promoApplied && appliedPromoCode) {
+        const newUsed = [...usedPromoCodes, appliedPromoCode];
+        setUsedPromoCodes(newUsed);
+        try { localStorage.setItem("gc247_used_promos", JSON.stringify(newUsed)); } catch {}
+      }
+
+      const completedOrder: CompletedOrder = {
+        id: orderId,
+        dbId: orderDbId,
+        items: [...items],
         subtotal,
         discount,
         shipping: shippingCost,
         total,
-        status: 'pending',
-        shipping_method: shippingMethod
-      }).select().single();
+        promoCode: promoApplied ? appliedPromoCode : undefined,
+        shippingMethod,
+        paymentMethod: info.paymentMethod,
+        createdAt: new Date().toISOString(),
+      };
 
-      if (!error && data) {
-        orderId = data.id;
-        
-        // Trigger Webhook Notification Async securely
-        fetch('/api/webhook', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ order_id: display_id, items, total, user_id: user.id })
-        }).catch(e => console.error('Webhook trigger failed', e));
-      }
+      setOrders((prev) => [completedOrder, ...prev]);
+      clearCart();
+      return completedOrder;
+
+    } finally {
+      setIsPlacingOrder(false);
     }
-
-    const order: CompletedOrder = {
-      id: orderId,
-      display_id,
-      items: [...items],
-      subtotal,
-      discount,
-      shipping: shippingCost,
-      total,
-      promoCode: promoApplied ? appliedPromoCode : undefined,
-      shippingMethod,
-      createdAt: new Date().toISOString(),
-    };
-
-    setOrders((prev) => [order, ...prev]);
-
-    // Clear cart locally
-    setItems([]);
-    setPromoApplied(false);
-    setAppliedPromoCode("");
-    setPromoCode("");
-
-    return order;
-  }, [items, subtotal, discount, shippingCost, total, promoApplied, appliedPromoCode, shippingMethod, user]);
+  }, [items, subtotal, discount, shippingCost, total, promoApplied, appliedPromoCode, shippingMethod, usedPromoCodes, clearCart]);
 
   return (
     <CartContext.Provider
@@ -215,6 +267,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         shippingMethod, setShippingMethod, shippingCost,
         total, orders, placeOrder,
         isCartOpen, setCartOpen,
+        isPlacingOrder,
       }}
     >
       {children}

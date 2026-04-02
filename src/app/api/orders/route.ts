@@ -1,0 +1,178 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+
+function getAdminClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+}
+
+// ── POST /api/orders — Create a new order ─────────────────────────────────────
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+
+    // Validate required fields
+    const { items, subtotal, discount, shippingCost, total, promoCode, shippingMethod, paymentMethod, name, email, address, city, state, zip, notes, userId } = body;
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
+    }
+
+    // Get session from Authorization header
+    const authHeader = request.headers.get("authorization");
+    let sessionUserId = userId || null;
+
+    if (authHeader?.startsWith("Bearer ")) {
+      const token = authHeader.slice(7);
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      const { data: { user } } = await supabase.auth.getUser(token);
+      if (user) sessionUserId = user.id;
+    }
+
+    const admin = getAdminClient();
+
+    // Insert the order
+    const { data: order, error } = await admin
+      .from("orders")
+      .insert({
+        user_id: sessionUserId,
+        user_name: name || null,
+        user_email: email || null,
+        items: items,
+        subtotal: Number(subtotal) || 0,
+        discount: Number(discount) || 0,
+        shipping_cost: Number(shippingCost) || 0,
+        total: Number(total) || 0,
+        promo_code: promoCode || null,
+        shipping_method: shippingMethod || "standard",
+        payment_method: paymentMethod || "crypto",
+        status: "pending",
+        notes: notes || null,
+        address: address || null,
+        city: city || null,
+        state: state || null,
+        zip: zip || null,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("[POST /api/orders] insert error:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Fire Telegram notification asynchronously (non-blocking)
+    sendTelegramNotification(order).catch((err) =>
+      console.error("[Telegram webhook] failed:", err)
+    );
+
+    return NextResponse.json({
+      success: true,
+      orderId: order.order_number,
+      orderDbId: order.id,
+    });
+  } catch (err) {
+    console.error("[POST /api/orders] unexpected error:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+// ── GET /api/orders — Fetch orders (admin) ────────────────────────────────────
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const status = searchParams.get("status");
+  const limit = Number(searchParams.get("limit") || "50");
+
+  const admin = getAdminClient();
+  let query = admin.from("orders").select("*").order("created_at", { ascending: false }).limit(limit);
+
+  if (status && status !== "all") {
+    query = query.eq("status", status);
+  }
+
+  const { data, error } = await query;
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  return NextResponse.json({ orders: data || [] });
+}
+
+// ── PATCH /api/orders — Update order status (admin) ───────────────────────────
+export async function PATCH(request: NextRequest) {
+  const body = await request.json();
+  const { orderId, status, trackingNumber } = body;
+
+  if (!orderId) return NextResponse.json({ error: "orderId required" }, { status: 400 });
+
+  const admin = getAdminClient();
+  const { error } = await admin
+    .from("orders")
+    .update({
+      ...(status ? { status } : {}),
+      ...(trackingNumber !== undefined ? { tracking_number: trackingNumber } : {}),
+    })
+    .eq("id", orderId);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  return NextResponse.json({ success: true });
+}
+
+// ── Telegram Notification ─────────────────────────────────────────────────────
+async function sendTelegramNotification(order: {
+  order_number: string;
+  user_name: string | null;
+  user_email: string | null;
+  items: unknown;
+  total: number;
+  payment_method: string;
+  shipping_method: string;
+  notes: string | null;
+}) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+
+  if (!token || !chatId) {
+    console.warn("[Telegram] Bot token or chat ID not configured — skipping notification");
+    return;
+  }
+
+  const items = Array.isArray(order.items) ? order.items : [];
+  const itemLines = items
+    .map((i: { name?: string; qty?: number; price?: number }) => `  • ${i.name || "?"} × ${i.qty || 1} — $${((i.price || 0) * (i.qty || 1)).toFixed(2)}`)
+    .join("\n");
+
+  const message = [
+    `🔔 *NEW ORDER — ${order.order_number}*`,
+    ``,
+    `👤 *Customer:* ${order.user_name || "Guest"}`,
+    `📧 *Email:* ${order.user_email || "N/A"}`,
+    ``,
+    `📦 *Items:*`,
+    itemLines,
+    ``,
+    `💰 *Total: $${Number(order.total).toFixed(2)}*`,
+    `💳 *Payment:* ${String(order.payment_method).toUpperCase()}`,
+    `🚚 *Shipping:* ${String(order.shipping_method).toUpperCase()}`,
+    order.notes ? `📝 *Notes:* ${order.notes}` : null,
+    ``,
+    `⏰ ${new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" })} PT`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text: message,
+      parse_mode: "Markdown",
+    }),
+  });
+}

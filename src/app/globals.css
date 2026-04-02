@@ -23,7 +23,7 @@ html {
   -webkit-text-size-adjust: 100%;
 }
 
-/* Selection */
+/* Selection adapts to theme */
 ::selection {
   background: #000;
   color: #fff;
@@ -40,6 +40,7 @@ html {
 
 ::-webkit-scrollbar-thumb {
   background: #ddd;
+  border-radius: 2px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -67,4 +68,105 @@ html {
 
 .press-effect:active {
   transform: scale(0.97);
+}
+
+/* ── Logo adaptive styles ────────────────────────────────────────── */
+/* Nav logo — HUGE and crisp, fills the branding area */
+.gasclub-nav-logo-img {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  max-height: 60px;
+  object-fit: contain;
+}
+
+/* General logo images */
+.gasclub-logo-img {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  object-fit: contain;
+}
+
+/* ── Theme transition smoothing ──────────────────────────────────── */
+/* Smooth transitions for theme/brightness changes */
+*,
+*::before,
+*::after {
+  transition-property: color, background-color, border-color, box-shadow, opacity;
+  transition-duration: 0s;
+  transition-timing-function: ease;
+}
+
+/* Only apply transitions to elements that opt-in */
+.theme-transition,
+nav,
+[class*="backdrop-blur"] {
+  transition-duration: 0.3s;
+}
+
+/* ── Product image treatments ────────────────────────────────────── */
+.product-img-container {
+  overflow: hidden;
+  position: relative;
+}
+
+.product-img-container img {
+  transition: transform 0.4s ease;
+}
+
+.product-img-container:hover img {
+  transform: scale(1.03);
+}
+
+/* ── Accent badge contrast helper ────────────────────────────────── */
+/* Ensures badges always maintain contrast */
+.accent-badge {
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+/* ── Mobile responsive logo — dramatically larger ────────────────── */
+@media (max-width: 640px) {
+  .gasclub-nav-logo-img {
+    max-height: 48px;
+    height: 48px !important;
+  }
+
+  /* Mobile: tighter nav action spacing */
+  .nav-actions {
+    gap: 2px;
+  }
+
+  /* Mobile: full-width theme panel */
+  .theme-panel-mobile {
+    left: 8px !important;
+    right: 8px !important;
+    width: auto !important;
+  }
+
+  /* Improve touch targets on mobile */
+  .nav-action-btn {
+    min-width: 36px;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1023px) {
+  .gasclub-nav-logo-img {
+    max-height: 56px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .gasclub-nav-logo-img {
+    max-height: 64px;
+  }
+}
+
+/* ── Product ticker animation ────────────────────────────────────── */
+.ticker-container {
+  mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
 }

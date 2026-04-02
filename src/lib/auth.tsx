@@ -2,8 +2,10 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import type { User, Session } from "@supabase/supabase-js";
+import type { DbProfile } from "@/lib/supabase-types";
 
-// ---- ROLES ----
+// ── Types ─────────────────────────────────────────────────────────────────────
 export type UserRole = "guest" | "member" | "approved_buyer" | "admin" | "super_admin";
 
 export interface VaultUser {
@@ -19,10 +21,12 @@ export interface VaultUser {
 
 interface AuthContextType {
   user: VaultUser | null;
+  session: Session | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
   isSuperAdmin: boolean;
   canComment: boolean;
+  loading: boolean;
   signup: (username: string, password: string, avatar?: string) => Promise<{ success: boolean; error?: string }>;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   adminLogin: (passkey: string) => Promise<{ success: boolean; error?: string }>;
@@ -32,50 +36,76 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-function makeSyntheticEmail(username: string) {
-  return `${username.toLowerCase().replace(/[^a-z0-9]/g, "")}@vault.local`;
+// Convert Supabase profile to VaultUser shape
+function profileToVaultUser(profile: DbProfile): VaultUser {
+  return {
+    id: profile.id,
+    username: profile.username,
+    displayName: profile.display_name,
+    email: profile.email || "",
+    role: profile.role as UserRole,
+    avatar: profile.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${profile.username}&backgroundColor=0a0a0a&textColor=ffffff`,
+    createdAt: profile.created_at,
+    purchaseCount: profile.purchase_count,
+  };
+}
+
+// Fetch profile from DB
+async function fetchProfile(userId: string): Promise<DbProfile | null> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
+    .single();
+  if (error) return null;
+  return data;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<VaultUser | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const fetchProfile = async (authUserId: string) => {
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', authUserId)
-      .single();
-
-    if (data) {
-      setUser({
-        id: data.id,
-        username: data.username,
-        displayName: data.display_name,
-        email: data.email,
-        role: data.role as UserRole,
-        avatar: data.avatar,
-        createdAt: data.created_at,
-        purchaseCount: data.purchase_count
-      });
-    } else {
-      setUser(null);
-    }
-  };
-
+  // Initialize: restore session from Supabase
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        fetchProfile(session.user.id).finally(() => setLoaded(true));
-      } else {
-        setLoaded(true);
+    let resolved = false;
+
+    // Timeout safety — never block the app for more than 2s
+    const timeout = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        console.warn("[Auth] Session restore timed out — continuing as guest");
+        setLoading(false);
       }
+    }, 2000);
+
+    // Get initial session
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (resolved) return; // timeout already fired
+      resolved = true;
+      clearTimeout(timeout);
+      setSession(session);
+      if (session?.user) {
+        const profile = await fetchProfile(session.user.id);
+        if (profile) setUser(profileToVaultUser(profile));
+      }
+      setLoading(false);
+    }).catch(() => {
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(timeout);
+      console.warn("[Auth] Session restore failed — continuing as guest");
+      setLoading(false);
     });
 
+    // Subscribe to auth state changes (handles OAuth, magic links, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
+        setSession(session);
         if (session?.user) {
-          fetchProfile(session.user.id);
+          const profile = await fetchProfile(session.user.id);
+          if (profile) setUser(profileToVaultUser(profile));
+          else setUser(null);
         } else {
           setUser(null);
         }
@@ -83,16 +113,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
 
     return () => {
+      clearTimeout(timeout);
       subscription.unsubscribe();
     };
   }, []);
 
-  const signup = useCallback(async (username: string, password: string, avatar?: string): Promise<{ success: boolean; error?: string }> => {
+  // ── SIGNUP ─────────────────────────────────────────────────────────────────
+  const signup = useCallback(async (
+    username: string,
+    password: string,
+    avatar?: string
+  ): Promise<{ success: boolean; error?: string }> => {
     const trimUser = username.trim().toLowerCase();
+
     if (!trimUser || trimUser.length < 3) return { success: false, error: "Username must be at least 3 characters" };
     if (!password || password.length < 4) return { success: false, error: "Password must be at least 4 characters" };
 
-    const email = makeSyntheticEmail(trimUser);
+    // Check username uniqueness before creating account
+    const { data: existing } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("username", trimUser)
+      .maybeSingle();
+
+    if (existing) return { success: false, error: "Username already taken" };
+
+    // Use username@gasclub247.app as internal email to satisfy Supabase auth
+    const email = `${trimUser}@gasclub247.app`;
+    const avatarUrl = avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${trimUser}&backgroundColor=0a0a0a&textColor=ffffff`;
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -101,65 +149,106 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         data: {
           username: trimUser,
           display_name: username.trim(),
-          avatar: avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${trimUser}&backgroundColor=0a0a0a&textColor=ffffff`,
-        }
-      }
+          avatar_url: avatarUrl,
+        },
+        // Skip email confirmation for MVP
+        emailRedirectTo: undefined,
+      },
     });
 
+    if (error) return { success: false, error: error.message };
+    if (!data.user) return { success: false, error: "Failed to create account" };
+
+    // Upsert profile (trigger should handle it, but be safe)
+    await (supabase as any).from("profiles").upsert({
+      id: data.user.id,
+      username: trimUser,
+      display_name: username.trim(),
+      email: "",
+      avatar_url: avatarUrl,
+      role: "member",
+    });
+
+    return { success: true };
+  }, []);
+
+  // ── LOGIN ──────────────────────────────────────────────────────────────────
+  const login = useCallback(async (
+    username: string,
+    password: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    const trimUser = username.trim().toLowerCase();
+
+    // Reconstruct the internal email
+    const email = `${trimUser}@gasclub247.app`;
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+
     if (error) {
+      // Friendly error messages
+      if (error.message.includes("Invalid login")) return { success: false, error: "Incorrect username or password" };
       return { success: false, error: error.message };
     }
+
     return { success: true };
   }, []);
 
-  const login = useCallback(async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    const trimUser = username.trim().toLowerCase();
-    const email = makeSyntheticEmail(trimUser);
+  // ── ADMIN LOGIN (secure — passkey verified server-side) ─────────────────
+  const adminLogin = useCallback(async (
+    passkey: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const res = await fetch("/api/admin/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ passkey: passkey.trim() }),
+      });
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+      const data = await res.json();
 
-    if (error) return { success: false, error: "Invalid username or password" };
-    return { success: true };
-  }, []);
+      if (!data.success) {
+        return { success: false, error: data.error || "Invalid passkey" };
+      }
 
-  const adminLogin = useCallback(async (passkey: string): Promise<{ success: boolean; error?: string }> => {
-    // If we wanted real admin auth, we'd sign in to a specific admin email.
-    // For now we map the passkey to the admin's email and password.
-    const { error } = await supabase.auth.signInWithPassword({
-      email: 'admin@vault.local',
-      password: passkey
-    });
+      // Set the session returned from the server
+      if (data.session) {
+        await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        });
+      }
 
-    if (error) {
-      return { success: false, error: "Invalid passkey" };
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: "Connection failed — try again" };
     }
-    return { success: true };
   }, []);
 
+  // ── LOGOUT ─────────────────────────────────────────────────────────────────
   const logout = useCallback(async () => {
     await supabase.auth.signOut();
     setUser(null);
+    setSession(null);
   }, []);
 
-  const updateProfile = useCallback(async (updates: Partial<Pick<VaultUser, "displayName" | "avatar" | "email">>) => {
+  // ── UPDATE PROFILE ─────────────────────────────────────────────────────────
+  const updateProfile = useCallback(async (
+    updates: Partial<Pick<VaultUser, "displayName" | "avatar" | "email">>
+  ) => {
     if (!user) return;
-    
-    // Convert keys from DB standard
-    const payload: any = {};
-    if (updates.displayName) payload.display_name = updates.displayName;
-    if (updates.avatar) payload.avatar = updates.avatar;
-    if (updates.email) payload.email = updates.email;
+    const { error } = await (supabase as any).from("profiles").update({
+      ...(updates.displayName ? { display_name: updates.displayName } : {}),
+      ...(updates.avatar ? { avatar_url: updates.avatar } : {}),
+      ...(updates.email ? { email: updates.email } : {}),
+    }).eq("id", user.id);
 
-    const { error } = await supabase
-      .from('users')
-      .update(payload)
-      .eq('id', user.id);
-      
     if (!error) {
-      await fetchProfile(user.id);
+      setUser((prev) => prev ? {
+        ...prev,
+        ...(updates.displayName ? { displayName: updates.displayName } : {}),
+        ...(updates.avatar ? { avatar: updates.avatar } : {}),
+        ...(updates.email ? { email: updates.email } : {}),
+      } : null);
     }
   }, [user]);
 
@@ -167,7 +256,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isSuperAdmin = user?.role === "super_admin";
   const canComment = user?.role === "approved_buyer" || isAdmin;
 
-  if (!loaded) {
+  // Prevent flash — show spinner while restoring session
+  if (loading) {
     return (
       <div className="min-h-[100dvh] bg-black flex items-center justify-center">
         <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
@@ -176,7 +266,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isAdmin, isSuperAdmin, canComment, signup, login, adminLogin, logout, updateProfile }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        isAuthenticated: !!user,
+        isAdmin,
+        isSuperAdmin,
+        canComment,
+        loading,
+        signup,
+        login,
+        adminLogin,
+        logout,
+        updateProfile,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { VaultLogo } from "./vault-logo";
+import { GasclubNavLogo } from "./gasclub-logo";
 import { cn } from "@/lib/utils";
 import { Home, Package, ShoppingCart, Shield, Ticket, Sun, Moon, ShoppingBag, Settings, LogOut } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./avatar";
@@ -44,13 +44,7 @@ export function VaultNav() {
         }}
       >
         <Link href="/home" className="flex items-center gap-2">
-          <VaultLogo size={24} className="transition-colors" style={{ color: fg }} />
-          <span
-            className="font-mono text-[10px] font-bold tracking-[0.3em] transition-colors"
-            style={{ color: fg }}
-          >
-            VAULT
-          </span>
+          <GasclubNavLogo isDark={isDark} brightness={brightness} />
         </Link>
 
         <div className="flex items-center gap-2">
@@ -131,7 +125,7 @@ export function VaultNav() {
                       <Settings size={12} /> SETTINGS
                     </Link>
                     <button
-                      onClick={async () => { await logout(); setShowUserMenu(false); }}
+                      onClick={() => { logout(); setShowUserMenu(false); }}
                       className="w-full flex items-center gap-2 px-3 py-2 font-mono text-[10px] tracking-wider transition-colors hover:bg-white/5 text-left"
                       style={{ color: fg }}
                     >

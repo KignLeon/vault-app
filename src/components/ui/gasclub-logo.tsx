@@ -2,6 +2,37 @@
 
 import React from "react";
 
+// ── Main wordmark logo using the actual gasclub247 brand asset ─────────────────
+// Uses the transparent PNG. Inverts automatically for dark/light mode via CSS filter.
+export function GasclubWordmark({
+  className = "",
+  accentColor,
+  size = "normal",
+}: {
+  className?: string;
+  accentColor?: string;
+  size?: "small" | "normal" | "large";
+}) {
+  const heights: Record<string, number> = { small: 32, normal: 44, large: 56 };
+  const h = heights[size] || 44;
+
+  return (
+    <span className={`inline-block ${className}`} style={{ height: h }}>
+      <img
+        src="/gasclub247-logo.png"
+        alt="GASCLUB247"
+        style={{
+          height: h,
+          width: "auto",
+          filter: "none",
+        }}
+        className="gasclub-logo-img"
+      />
+    </span>
+  );
+}
+
+// ── Icon-only logo mark (the G circle — used as favicon / icon context) ────────
 export function GasclubLogo({
   className = "",
   size = 32,
@@ -14,78 +45,79 @@ export function GasclubLogo({
   accentColor?: string;
 }) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 120 120"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      style={style}
-    >
-      {/* Outer circle */}
-      <circle cx="60" cy="60" r="56" stroke="currentColor" strokeWidth="2.5" />
-      {/* Inner ring — accent tint */}
-      <circle
-        cx="60"
-        cy="60"
-        r="48"
-        stroke={accentColor || "currentColor"}
-        strokeWidth="1"
-        opacity="0.3"
+    <span className={`inline-block ${className}`} style={{ height: size, ...style }}>
+      <img
+        src="/gasclub247-logo.png"
+        alt="GASCLUB247"
+        style={{ height: size, width: "auto" }}
+        className="gasclub-logo-img"
       />
-      {/* G letterform */}
-      <path
-        d="M 72 42 C 66 35, 52 32, 44 38 C 36 44, 33 56, 35 64 C 37 72, 44 80, 54 82 C 64 84, 72 78, 74 72 L 62 72 L 62 64 L 82 64 L 82 72 C 80 82, 70 90, 58 90 C 44 90, 32 80, 28 66 C 24 52, 28 38, 40 30 C 52 22, 68 26, 76 36 Z"
-        fill="currentColor"
-      />
-      {/* Subtle sun ray accent — Cali vibe */}
-      <line
-        x1="95"
-        y1="20"
-        x2="102"
-        y2="13"
-        stroke={accentColor || "currentColor"}
-        strokeWidth="2"
-        strokeLinecap="round"
-        opacity="0.4"
-      />
-      <line
-        x1="104"
-        y1="30"
-        x2="112"
-        y2="27"
-        stroke={accentColor || "currentColor"}
-        strokeWidth="2"
-        strokeLinecap="round"
-        opacity="0.3"
-      />
-      <line
-        x1="100"
-        y1="10"
-        x2="104"
-        y2="4"
-        stroke={accentColor || "currentColor"}
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        opacity="0.2"
-      />
-    </svg>
+    </span>
   );
 }
 
-export function GasclubWordmark({
+// ── Navbar wordmark — HUGE, dominant, fills the branding area ────────────────
+// Uses continuous brightness level for smooth inversion instead of binary isDark
+export function GasclubNavLogo({
+  isDark,
+  brightness,
   className = "",
-  accentColor,
 }: {
+  isDark: boolean;
+  brightness?: number;
   className?: string;
-  accentColor?: string;
 }) {
+  // Continuous inversion: at brightness=0 fully invert, at 100 no invert
+  const invertAmount = brightness !== undefined
+    ? Math.max(0, Math.min(1, 1 - brightness / 100))
+    : (isDark ? 1 : 0);
+
   return (
-    <span className={`font-mono text-sm font-bold tracking-[0.25em] uppercase ${className}`}>
-      GAS
-      <span style={{ color: accentColor }}>CLUB</span>
-      <span style={{ opacity: 0.5, fontSize: "0.8em" }}>247</span>
+    <span className={`inline-flex items-center ${className}`}>
+      <img
+        src="/gasclub247-logo.png"
+        alt="GASCLUB247"
+        style={{
+          height: 86,  // MASSIVELY scaled up — dominant in the navbar
+          width: "auto",
+          filter: `invert(${invertAmount})`,
+          transition: "filter 0.3s ease",
+          marginLeft: "-8px", // Pull it slightly left to balance the visual weight
+        }}
+        className="gasclub-nav-logo-img"
+      />
+    </span>
+  );
+}
+
+// ── Footer logo — medium size, brightness-adaptive ──────────────────────────
+export function GasclubFooterLogo({
+  isDark,
+  brightness,
+  className = "",
+}: {
+  isDark: boolean;
+  brightness?: number;
+  className?: string;
+}) {
+  const invertAmount = brightness !== undefined
+    ? Math.max(0, Math.min(1, 1 - brightness / 100))
+    : (isDark ? 1 : 0);
+
+  return (
+    <span className={`inline-flex items-center ${className}`}>
+      <img
+        src="/gasclub247-logo.png"
+        alt="GASCLUB247"
+        style={{
+          height: 36,
+          width: "auto",
+          filter: `invert(${invertAmount})`,
+          transition: "filter 0.3s ease",
+          opacity: 0.7,
+        }}
+        className="gasclub-logo-img"
+      />
     </span>
   );
 }

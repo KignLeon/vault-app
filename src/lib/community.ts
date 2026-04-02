@@ -4,6 +4,7 @@
 
 import { supabase } from "@/lib/supabase";
 import { posts as localPosts } from "@/lib/data";
+import { productCardUrl } from "@/lib/cloudinary-assets";
 
 export interface DbPost {
   id: string;
@@ -82,10 +83,14 @@ export async function fetchPosts(): Promise<DbPost[]> {
     // UI/UX Requirement: EVERY post must include images
     // If a DB post lacks an image_url, we assign a high-fidelity fallback.
     const FALLBACK_IMAGES = [
-      "https://res.cloudinary.com/ddnhp0hzd/image/upload/f_auto,q_auto,w_800/v1775013257/gasclub247/products/platinum-lemon-cherry.jpg",
-      "https://res.cloudinary.com/ddnhp0hzd/image/upload/f_auto,q_auto,w_800/v1775013257/gasclub247/products/pink-panther.jpg",
-      "https://res.cloudinary.com/ddnhp0hzd/image/upload/f_auto,q_auto,w_800/v1/gasclub247/products/indoors/rainbow-belts.jpg",
-      "https://res.cloudinary.com/ddnhp0hzd/image/upload/f_auto,q_auto,w_800/v1/gasclub247/products/exotic/gastopia.jpg"
+      productCardUrl("RAINBOWBELTS3_mqv2i7"),
+      productCardUrl("LEMONBERRYGELATO3_hd5aed"),
+      productCardUrl("BLUEJAM3_ny9zbd"),
+      productCardUrl("GUMBO3_pawehp"),
+      productCardUrl("67RUNTZ3_edra03"),
+      productCardUrl("CANDYRUNTZ3_i5jddr"),
+      productCardUrl("GALACTICGUMMIES3_kyqvnd"),
+      productCardUrl("ZALATO3_zvfpqw"),
     ];
     
     return data.map((d: DbPost, index: number) => ({

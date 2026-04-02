@@ -6,6 +6,7 @@ import { ReviewsColumn } from "@/components/ui/community-feed";
 import { feedbackData } from "@/lib/data";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
+import { heroUrl, HERO_IMAGES, productCardUrl } from "@/lib/cloudinary-assets";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   fetchPosts, getLocalPosts, addComment, fetchComments, deletePost, deleteComment,
@@ -40,6 +41,13 @@ export default function HomePage() {
   const [posts, setPosts] = useState<DbPost[]>(() => getLocalPosts());
   const [loading, setLoading] = useState(false);
   const [activePost, setActivePost] = useState<string | null>(null);
+  const [heroIdx, setHeroIdx] = useState(0);
+
+  // Auto-rotate hero
+  useEffect(() => {
+    const t = setInterval(() => setHeroIdx(i => (i + 1) % HERO_IMAGES.length), 5000);
+    return () => clearInterval(t);
+  }, []);
 
   // Background sync from Supabase (local data already rendered)
   useEffect(() => {
@@ -71,6 +79,51 @@ export default function HomePage() {
           <button onClick={refresh} className="p-2 hover:opacity-70 transition-opacity" style={{ color: muted }}>
             <RefreshCw size={13} />
           </button>
+        </div>
+      </motion.div>
+
+      {/* Hero Banner */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.1 }}
+        className="relative w-full overflow-hidden mb-6"
+        style={{ borderRadius: 0, border: `1px solid ${border}` }}
+      >
+        <div className="relative aspect-[21/9] w-full overflow-hidden" style={{ background: isDark ? "#111" : "#f5f5f5" }}>
+          <AnimatePresence mode="wait">
+            <motion.img
+              key={heroIdx}
+              src={heroUrl(HERO_IMAGES[heroIdx])}
+              alt="Featured product"
+              initial={{ opacity: 0, scale: 1.05 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.8 }}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          </AnimatePresence>
+
+          {/* Glass overlay */}
+          <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)" }} />
+
+          {/* Hero content */}
+          <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6">
+            <p className="font-mono text-[8px] sm:text-[10px] tracking-[0.3em] opacity-70" style={{ color: "#fff" }}>PREMIUM INDOOR · DIRECT ACCESS</p>
+            <h2 className="font-mono text-sm sm:text-xl font-bold tracking-wider mt-1" style={{ color: "#fff" }}>PRIVATE INVENTORY — NOW LIVE</h2>
+          </div>
+
+          {/* Dot indicators */}
+          <div className="absolute bottom-3 right-4 flex gap-1.5">
+            {HERO_IMAGES.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setHeroIdx(i)}
+                className="w-1.5 h-1.5 rounded-full transition-all"
+                style={{ background: i === heroIdx ? "#fff" : "rgba(255,255,255,0.3)" }}
+              />
+            ))}
+          </div>
         </div>
       </motion.div>
 

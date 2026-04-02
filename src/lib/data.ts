@@ -93,8 +93,17 @@ const smallsBulk: BulkTier[] = [
 
 function rand(min: number, max: number) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 
-// Cloudinary base URL with auto-optimization transforms
-const CDN = "https://res.cloudinary.com/ddnhp0hzd/image/upload/f_auto,q_auto,w_800";
+import { productCardUrl, detailUrl, getProductImages, PRODUCT_IMAGES as _PI } from "@/lib/cloudinary-assets";
+
+// Helper: get primary card image + full gallery for a product name
+function img(name: string): { image: string; images: string[] } {
+  const pi = getProductImages(name);
+  if (!pi.primary) return { image: "", images: [] };
+  return {
+    image: productCardUrl(pi.primary),
+    images: pi.gallery.map(id => detailUrl(id)),
+  };
+}
 
 // ---- PRODUCTS ----
 // Full catalog — includes all Google Drive products + original strains
@@ -105,8 +114,7 @@ export const products: Product[] = [
   {
     id: "p1", sku: "TC-PLC-01", name: "PLATINUM LEMON CHERRY", category: "featured",
     price: 120, stock: 42, status: "in-stock", featured: true,
-    image: `${CDN}/v1775013257/gasclub247/products/platinum-lemon-cherry.jpg`,
-    images: [`${CDN}/v1775013257/gasclub247/products/platinum-lemon-cherry.jpg`],
+    ...img("PLATINUM LEMON CHERRY"),
     description: "Bold cherry-forward indoor flower with premium bag appeal. Dense nugs, rich terpene profile. Our #1 seller.",
     tags: ["indoor", "premium", "cherry", "top-seller"],
     bulk: premiumBulk, viewers: rand(8, 24), recentOrders: rand(2, 6),
@@ -114,8 +122,7 @@ export const products: Product[] = [
   {
     id: "p2", sku: "TC-PP-01", name: "PINK PANTHER", category: "featured",
     price: 110, stock: 6, status: "in-stock", featured: true,
-    image: `${CDN}/v1775013257/gasclub247/products/pink-panther.jpg`,
-    images: [`${CDN}/v1775013257/gasclub247/products/pink-panther.jpg`, `${CDN}/v1/gasclub247/products/pre-rolls/pink-panther-preroll.jpg`],
+    ...img("PINK PANTHER"),
     description: "Smooth fruity profile, premium boutique drop. Limited batch with standout aroma and clean finish.",
     tags: ["boutique", "fruity", "limited"],
     bulk: standardBulk, viewers: rand(12, 30), recentOrders: rand(3, 8),
@@ -123,8 +130,7 @@ export const products: Product[] = [
   {
     id: "p3", sku: "TC-US-01", name: "UNCLE SNOOP", category: "featured",
     price: 115, stock: 28, status: "in-stock", featured: true,
-    image: "",
-    images: [],
+    ...img("UNCLE SNOOP"),
     description: "Heavy-hitting classic profile with limited batch feel. OG lineage, strong nose, smooth pull.",
     tags: ["classic", "og", "heavy"],
     bulk: standardBulk, viewers: rand(6, 18), recentOrders: rand(1, 5),
@@ -132,8 +138,7 @@ export const products: Product[] = [
   {
     id: "p4", sku: "TC-LDR-01", name: "LEMON DIOR RUNTZ", category: "featured",
     price: 125, stock: 18, status: "in-stock", featured: true,
-    image: `${CDN}/v1/gasclub247/products/pre-rolls/lemondiorruntz-preroll.jpg`,
-    images: [`${CDN}/v1/gasclub247/products/pre-rolls/lemondiorruntz-preroll.jpg`],
+    ...img("LEMON DIOR RUNTZ"),
     description: "Exotic lemon-forward profile with Runtz genetics. Premium indoor, dense structure, loud nose.",
     tags: ["exotic", "runtz", "lemon"],
     bulk: premiumBulk, viewers: rand(10, 20), recentOrders: rand(2, 7),
@@ -141,8 +146,7 @@ export const products: Product[] = [
   {
     id: "p5", sku: "TC-WH-01", name: "WARHEADZ", category: "featured",
     price: 118, stock: 14, status: "in-stock", featured: true,
-    image: `${CDN}/v1/gasclub247/products/pre-rolls/warheadz-preroll.jpg`,
-    images: [`${CDN}/v1/gasclub247/products/pre-rolls/warheadz-preroll.jpg`],
+    ...img("WARHEADZ"),
     description: "Sour and pungent gas profile. Heavy hitting, fast onset. Named for the candy-sour terpene punch.",
     tags: ["gas", "sour", "heavy"],
     bulk: standardBulk, viewers: rand(5, 15), recentOrders: rand(1, 4),
@@ -150,7 +154,7 @@ export const products: Product[] = [
   {
     id: "p6", sku: "TC-BR-01", name: "BLACK RUNTZ", category: "featured",
     price: 115, stock: 22, status: "in-stock", featured: true,
-    image: "", images: [],
+    ...img("BLACK RUNTZ"),
     description: "Dark purple hues with sweet candy finish. Runtz phenotype with deeper, more sedative effects.",
     tags: ["runtz", "purple", "sweet"],
     bulk: standardBulk, viewers: rand(8, 22), recentOrders: rand(2, 5),
@@ -158,7 +162,7 @@ export const products: Product[] = [
   {
     id: "p7", sku: "TC-BN-01", name: "BLUE NERDS", category: "featured",
     price: 112, stock: 30, status: "in-stock", featured: true,
-    image: "", images: [],
+    ...img("BLUE NERDS"),
     description: "Sweet blue candy profile with balanced hybrid effects. Colorful bag appeal, smooth smoke.",
     tags: ["candy", "hybrid", "sweet"],
     bulk: standardBulk, viewers: rand(6, 16), recentOrders: rand(1, 3),
@@ -166,7 +170,7 @@ export const products: Product[] = [
   {
     id: "p8", sku: "TC-WC-01", name: "WEDDING CAKE", category: "featured",
     price: 120, stock: 16, status: "in-stock", featured: true,
-    image: "", images: [],
+    ...img("WEDDING CAKE"),
     description: "Rich vanilla and earthy undertones. Dense trichome-coated buds. Premium indoor cultivation.",
     tags: ["premium", "indoor", "vanilla"],
     bulk: premiumBulk, viewers: rand(10, 25), recentOrders: rand(3, 7),
@@ -178,7 +182,7 @@ export const products: Product[] = [
   {
     id: "p9", sku: "TC-CL-01", name: "CURELATO", category: "exotic",
     price: 130, stock: 10, status: "in-stock",
-    image: "", images: [],
+    ...img("CURELATO"),
     description: "Gelato cross with enhanced cure. Creamy, gassy, and potent. Small batch exotic.",
     tags: ["gelato", "exotic", "creamy"],
     bulk: premiumBulk, viewers: rand(8, 20), recentOrders: rand(2, 5),
@@ -186,7 +190,7 @@ export const products: Product[] = [
   {
     id: "p10", sku: "TC-DC-01", name: "DIVORCE CAKE", category: "exotic",
     price: 125, stock: 12, status: "in-stock",
-    image: "", images: [],
+    ...img("DIVORCE CAKE"),
     description: "Wedding Cake x White Widow cross. Heavy indica effects with sweet doughy flavor.",
     tags: ["indica", "cake", "potent"],
     bulk: premiumBulk, viewers: rand(5, 15), recentOrders: rand(1, 4),
@@ -194,7 +198,7 @@ export const products: Product[] = [
   {
     id: "p11", sku: "TC-TR-01", name: "TRUMP RUNTZ", category: "exotic",
     price: 128, stock: 8, status: "in-stock",
-    image: "", images: [],
+    ...img("TRUMP RUNTZ"),
     description: "Loud and unapologetic. Dense nugs with candy-gas profile. Limited exotic batch.",
     tags: ["runtz", "limited", "loud"],
     bulk: premiumBulk, viewers: rand(14, 28), recentOrders: rand(3, 8),
@@ -202,8 +206,7 @@ export const products: Product[] = [
   {
     id: "p12", sku: "TC-SL-01", name: "SUPREME LATTO", category: "exotic",
     price: 130, stock: 9, status: "in-stock",
-    image: `${CDN}/v1/gasclub247/products/pre-rolls/supreme-latto-preroll.jpg`,
-    images: [`${CDN}/v1/gasclub247/products/pre-rolls/supreme-latto-preroll.jpg`],
+    ...img("SUPREME LATTO"),
     description: "Rare exotic with sweet pastry undertones. Supreme tier flower, hand-trimmed.",
     tags: ["exotic", "rare", "pastry"],
     bulk: premiumBulk, viewers: rand(10, 22), recentOrders: rand(2, 6),
@@ -211,7 +214,7 @@ export const products: Product[] = [
   {
     id: "p13", sku: "TC-BI-01", name: "BISCANTE", category: "exotic",
     price: 135, stock: 7, status: "in-stock",
-    image: "", images: [],
+    ...img("BISCANTE"),
     description: "Gelato x Biscotti cross. Sweet, earthy, with a gas finish. Ultra-premium indoor.",
     tags: ["gelato", "biscotti", "indoor"],
     bulk: premiumBulk, viewers: rand(8, 18), recentOrders: rand(2, 4),
@@ -219,7 +222,7 @@ export const products: Product[] = [
   {
     id: "p14", sku: "TC-II-01", name: "ITALIAN ICE", category: "exotic",
     price: 125, stock: 14, status: "in-stock",
-    image: "", images: [],
+    ...img("ITALIAN ICE"),
     description: "Cool menthol-sweet profile with fruity exhale. Refreshing smoke, premium cure.",
     tags: ["menthol", "sweet", "fruity"],
     bulk: premiumBulk, viewers: rand(6, 16), recentOrders: rand(1, 3),
@@ -227,7 +230,7 @@ export const products: Product[] = [
   {
     id: "p15", sku: "TC-VG-01", name: "VENOM GAS", category: "exotic",
     price: 122, stock: 20, status: "in-stock",
-    image: "", images: [],
+    ...img("VENOM GAS"),
     description: "Pure gas. Pungent, loud, aggressive terpene profile. Not for the faint of heart.",
     tags: ["gas", "pungent", "heavy"],
     bulk: standardBulk, viewers: rand(5, 14), recentOrders: rand(1, 3),
@@ -235,7 +238,7 @@ export const products: Product[] = [
   {
     id: "p16", sku: "TC-SK-01", name: "SKITTLES", category: "exotic",
     price: 115, stock: 25, status: "in-stock",
-    image: "", images: [],
+    ...img("SKITTLES"),
     description: "Rainbow candy terpenes. Sweet, fruit-forward, and balanced. Fan favorite strain.",
     tags: ["candy", "sweet", "balanced"],
     bulk: standardBulk, viewers: rand(10, 25), recentOrders: rand(3, 7),
@@ -243,7 +246,7 @@ export const products: Product[] = [
   {
     id: "p17", sku: "TC-DSO-01", name: "DOUBLE STUFF OREOS", category: "exotic",
     price: 128, stock: 11, status: "in-stock",
-    image: "", images: [],
+    ...img("DOUBLE STUFF OREOS"),
     description: "Cookies phenotype with doubled-down dough and cream flavor. Dense and frosty.",
     tags: ["cookies", "creamy", "frosty"],
     bulk: premiumBulk, viewers: rand(7, 18), recentOrders: rand(2, 5),
@@ -251,7 +254,7 @@ export const products: Product[] = [
   {
     id: "p18", sku: "TC-CM-01", name: "CEREAL MILK", category: "exotic",
     price: 120, stock: 18, status: "in-stock",
-    image: "", images: [],
+    ...img("CEREAL MILK"),
     description: "Sweet creamy cereal flavor. Cookies Fam genetics. Smooth smoke with uplifting effects.",
     tags: ["cookies", "sweet", "creamy"],
     bulk: standardBulk, viewers: rand(8, 20), recentOrders: rand(2, 6),
@@ -259,7 +262,7 @@ export const products: Product[] = [
   {
     id: "p19", sku: "TC-G34-01", name: "GELATO 34", category: "exotic",
     price: 125, stock: 15, status: "in-stock",
-    image: "", images: [],
+    ...img("GELATO 34"),
     description: "Classic Gelato phenotype. Sherbert and Thin Mint cross. Sweet, potent, top-shelf.",
     tags: ["gelato", "classic", "sweet"],
     bulk: premiumBulk, viewers: rand(9, 22), recentOrders: rand(3, 7),
@@ -267,8 +270,7 @@ export const products: Product[] = [
   {
     id: "p37", sku: "TC-67R-01", name: "67 RUNTZ", category: "exotic",
     price: 120, stock: 12, status: "in-stock",
-    image: `${CDN}/v1/gasclub247/products/greenhouse/67-runtz.jpg`,
-    images: [`${CDN}/v1/gasclub247/products/greenhouse/67-runtz.jpg`],
+    ...img("67 RUNTZ"),
     description: "Exclusive Runtz phenotype. High-potency candy profile with classic Runtz bag appeal.",
     tags: ["runtz", "exclusive", "candy"],
     bulk: standardBulk, viewers: rand(10, 20), recentOrders: rand(2, 5),
@@ -277,8 +279,7 @@ export const products: Product[] = [
   {
     id: "p40", sku: "TC-RK-01", name: "RAINBOW KANDY", category: "exotic",
     price: 128, stock: 14, status: "in-stock",
-    image: `${CDN}/v1/gasclub247/products/exotic/rainbow-kandy.jpg`,
-    images: [`${CDN}/v1/gasclub247/products/exotic/rainbow-kandy.jpg`],
+    ...img("RAINBOW KANDY"),
     description: "Vibrant candy rainbow terpenes with a sweet, colorful nose. Dense frosty nugs with eye-catching appeal.",
     tags: ["candy", "rainbow", "exotic"],
     bulk: premiumBulk, viewers: rand(10, 22), recentOrders: rand(2, 6),
@@ -286,8 +287,7 @@ export const products: Product[] = [
   {
     id: "p41", sku: "TC-GTP-01", name: "GASTOPIA", category: "exotic",
     price: 132, stock: 10, status: "in-stock",
-    image: `${CDN}/v1/gasclub247/products/exotic/gastopia.jpg`,
-    images: [`${CDN}/v1/gasclub247/products/exotic/gastopia.jpg`],
+    ...img("GASTOPIA"),
     description: "Utopian gas profile. Deep, pungent, with a smooth creamy finish. Limited exotic batch.",
     tags: ["gas", "exotic", "creamy"],
     bulk: premiumBulk, viewers: rand(12, 26), recentOrders: rand(3, 7),
@@ -295,8 +295,7 @@ export const products: Product[] = [
   {
     id: "p42", sku: "TC-LCG85-01", name: "LCG 85", category: "exotic",
     price: 130, stock: 8, status: "in-stock",
-    image: `${CDN}/v1/gasclub247/products/exotic/lcg-85-sml.jpg`,
-    images: [`${CDN}/v1/gasclub247/products/exotic/lcg-85-sml.jpg`],
+    ...img("LCG 85"),
     description: "Lemon Cherry Gelato phenotype #85. Exceptional terpene expression with ultra-dense trichome coverage.",
     tags: ["gelato", "lemon", "cherry", "premium"],
     bulk: premiumBulk, viewers: rand(14, 30), recentOrders: rand(4, 8),
@@ -308,8 +307,7 @@ export const products: Product[] = [
   {
     id: "p20", sku: "TC-CR-01", name: "CANDY RUNTZ", category: "candy",
     price: 112, stock: 22, status: "in-stock",
-    image: `${CDN}/v1/gasclub247/products/greenhouse/candy-runtz.jpg`,
-    images: [`${CDN}/v1/gasclub247/products/greenhouse/candy-runtz.jpg`],
+    ...img("CANDY RUNTZ"),
     description: "Ultra-sweet candy profile. Runtz genetics with loud colors and sugar-cookie terps.",
     tags: ["candy", "runtz", "sweet"],
     bulk: standardBulk, viewers: rand(6, 16), recentOrders: rand(1, 4),
@@ -317,7 +315,7 @@ export const products: Product[] = [
   {
     id: "p21", sku: "TC-CC-01", name: "COTTON CANDY", category: "candy",
     price: 108, stock: 28, status: "in-stock",
-    image: "", images: [],
+    ...img("COTTON CANDY"),
     description: "Light, airy, sweet smoke. Perfect for daytime. Mellow effects, great flavor.",
     tags: ["sweet", "light", "daytime"],
     bulk: standardBulk, viewers: rand(4, 12), recentOrders: rand(1, 3),
@@ -325,8 +323,7 @@ export const products: Product[] = [
   {
     id: "p22", sku: "TC-BP-01", name: "BERRY POP", category: "candy",
     price: 110, stock: 20, status: "in-stock",
-    image: `${CDN}/v1/gasclub247/products/pre-rolls/berry-pop-preroll.jpg`,
-    images: [`${CDN}/v1/gasclub247/products/pre-rolls/berry-pop-preroll.jpg`],
+    ...img("BERRY POP"),
     description: "Mixed berry terpene explosion. Sweet, tart, fruity. Eye-catching purple hues.",
     tags: ["berry", "fruity", "purple"],
     bulk: standardBulk, viewers: rand(5, 14), recentOrders: rand(1, 3),
@@ -334,7 +331,7 @@ export const products: Product[] = [
   {
     id: "p23", sku: "TC-PS-01", name: "PINK STARBURST", category: "candy",
     price: 115, stock: 16, status: "in-stock",
-    image: "", images: [],
+    ...img("PINK STARBURST"),
     description: "Tastes exactly like the pink candy. Sweet strawberry-citrus with smooth exhale.",
     tags: ["strawberry", "citrus", "sweet"],
     bulk: standardBulk, viewers: rand(8, 20), recentOrders: rand(2, 5),
@@ -342,7 +339,7 @@ export const products: Product[] = [
   {
     id: "p24", sku: "TC-SG-01", name: "STRAWBERRY GELATO", category: "candy",
     price: 118, stock: 14, status: "in-stock",
-    image: "", images: [],
+    ...img("STRAWBERRY GELATO"),
     description: "Gelato cross with strawberry phenotype. Creamy, fruity, and potent. Beautiful buds.",
     tags: ["gelato", "strawberry", "creamy"],
     bulk: standardBulk, viewers: rand(6, 15), recentOrders: rand(1, 4),
@@ -350,7 +347,7 @@ export const products: Product[] = [
   {
     id: "p25", sku: "TC-MM-01", name: "MANGO MINTZ", category: "candy",
     price: 116, stock: 18, status: "in-stock",
-    image: "", images: [],
+    ...img("MANGO MINTZ"),
     description: "Tropical mango nose with cool minty finish. Refreshing and euphoric.",
     tags: ["tropical", "minty", "fruity"],
     bulk: standardBulk, viewers: rand(5, 12), recentOrders: rand(1, 3),
@@ -358,8 +355,7 @@ export const products: Product[] = [
   {
     id: "p34", sku: "TC-ZAL-01", name: "ZALATO", category: "candy",
     price: 115, stock: 20, status: "in-stock",
-    image: `${CDN}/v1/gasclub247/products/greenhouse/zalato.jpg`,
-    images: [`${CDN}/v1/gasclub247/products/greenhouse/zalato.jpg`],
+    ...img("ZALATO"),
     description: "Zkittlez x Gelato phenotype. Sweet candy terps with a creamy gelato finish.",
     tags: ["gelato", "candy", "hybrid"],
     bulk: standardBulk, viewers: rand(7, 14), recentOrders: rand(1, 3),
@@ -367,8 +363,7 @@ export const products: Product[] = [
   {
     id: "p35", sku: "TC-WG-01", name: "WHITE GUMMIES", category: "candy",
     price: 112, stock: 24, status: "in-stock",
-    image: `${CDN}/v1/gasclub247/products/greenhouse/white-gummies.jpg`,
-    images: [`${CDN}/v1/gasclub247/products/greenhouse/white-gummies.jpg`],
+    ...img("WHITE GUMMIES"),
     description: "Rare white phenotype. Sweet gummy candy profile with clean white trichome coverage.",
     tags: ["candy", "rare", "white"],
     bulk: standardBulk, viewers: rand(5, 12), recentOrders: rand(1, 3),
@@ -376,8 +371,7 @@ export const products: Product[] = [
   {
     id: "p36", sku: "TC-GG-01", name: "GALACTIC GUMMIES", category: "candy",
     price: 115, stock: 16, status: "in-stock",
-    image: `${CDN}/v1/gasclub247/products/greenhouse/galactic-gummies.jpg`,
-    images: [`${CDN}/v1/gasclub247/products/greenhouse/galactic-gummies.jpg`],
+    ...img("GALACTIC GUMMIES"),
     description: "Out-of-this-world sweet and fruity. Dense gummy terps with cosmic bag appeal.",
     tags: ["candy", "fruity", "sweet"],
     bulk: standardBulk, viewers: rand(8, 16), recentOrders: rand(1, 3),
@@ -386,8 +380,7 @@ export const products: Product[] = [
   {
     id: "p43", sku: "TC-CD-01", name: "CANDY DROP", category: "candy",
     price: 108, stock: 20, status: "in-stock",
-    image: `${CDN}/v1/gasclub247/products/exotic/candy-drop-sml.jpg`,
-    images: [`${CDN}/v1/gasclub247/products/exotic/candy-drop-sml.jpg`],
+    ...img("CANDY DROP"),
     description: "Sweet candy drop profile. Light, approachable, with sugar-coated terpenes and a clean finish.",
     tags: ["candy", "sweet", "light"],
     bulk: smallsBulk, viewers: rand(6, 14), recentOrders: rand(1, 4),
@@ -399,7 +392,7 @@ export const products: Product[] = [
   {
     id: "p26", sku: "TC-GG4-01", name: "GG4 (GORILLA GLUE #4)", category: "gas",
     price: 115, stock: 20, status: "in-stock",
-    image: "", images: [],
+    ...img("GG4 (GORILLA GLUE #4)"),
     description: "The original heavy-hitter. Pungent diesel with earthy pine. Locks you to the couch.",
     tags: ["indica", "diesel", "classic"],
     bulk: standardBulk, viewers: rand(10, 25), recentOrders: rand(3, 8),
@@ -407,7 +400,7 @@ export const products: Product[] = [
   {
     id: "p27", sku: "TC-MB-01", name: "MOTOR BREATH", category: "gas",
     price: 120, stock: 12, status: "in-stock",
-    image: "", images: [],
+    ...img("MOTOR BREATH"),
     description: "Fuel-forward with garlic undertones. Chemdog lineage. Strong, sedative, for experienced users.",
     tags: ["fuel", "garlic", "heavy"],
     bulk: standardBulk, viewers: rand(7, 18), recentOrders: rand(2, 5),
@@ -415,7 +408,7 @@ export const products: Product[] = [
   {
     id: "p28", sku: "TC-GF-01", name: "GAS FACE", category: "gas",
     price: 118, stock: 15, status: "in-stock",
-    image: "", images: [],
+    ...img("GAS FACE"),
     description: "Face Off OG x Cherry Pie x Biscotti. Triple-cross gas monster. Loud and potent.",
     tags: ["gas", "biscotti", "potent"],
     bulk: standardBulk, viewers: rand(6, 14), recentOrders: rand(1, 4),
@@ -423,7 +416,7 @@ export const products: Product[] = [
   {
     id: "p29", sku: "TC-JFG-01", name: "JET FUEL GELATO", category: "gas",
     price: 122, stock: 10, status: "in-stock",
-    image: "", images: [],
+    ...img("JET FUEL GELATO"),
     description: "Gelato x High Octane. Fuel-forward with sweet gelato finish. Rare cross.",
     tags: ["gelato", "fuel", "rare"],
     bulk: premiumBulk, viewers: rand(12, 28), recentOrders: rand(3, 7),
@@ -431,7 +424,7 @@ export const products: Product[] = [
   {
     id: "p30", sku: "TC-OK-01", name: "OG KRYPTONITE", category: "gas",
     price: 115, stock: 18, status: "in-stock",
-    image: "", images: [],
+    ...img("OG KRYPTONITE"),
     description: "Pure OG genetics. Earthy, piney, with a knockout punch. West coast classic.",
     tags: ["og", "earthy", "classic"],
     bulk: standardBulk, viewers: rand(5, 15), recentOrders: rand(1, 3),
@@ -439,8 +432,7 @@ export const products: Product[] = [
   {
     id: "p33", sku: "TC-GUM-01", name: "GUMBO", category: "gas",
     price: 118, stock: 14, status: "in-stock",
-    image: `${CDN}/v1/gasclub247/products/greenhouse/gumbo.jpg`,
-    images: [`${CDN}/v1/gasclub247/products/greenhouse/gumbo.jpg`],
+    ...img("GUMBO"),
     description: "Deep earthy gas with unique gumbo terpene profile. Heavy-hitting indica dominant.",
     tags: ["gas", "indica", "earthy"],
     bulk: standardBulk, viewers: rand(8, 18), recentOrders: rand(2, 4),
@@ -452,7 +444,7 @@ export const products: Product[] = [
   {
     id: "p31", sku: "TC-LCG-01", name: "LEMON CHERRY GELATO", category: "premium",
     price: 130, stock: 8, status: "in-stock",
-    image: "", images: [],
+    ...img("LEMON CHERRY GELATO"),
     description: "Top 3 exotics nationwide. Lemon, cherry, and gelato cross. Dense, frosty, ultra-premium.",
     tags: ["exotic", "gelato", "premium"],
     bulk: premiumBulk, viewers: rand(15, 35), recentOrders: rand(4, 10),
@@ -460,7 +452,7 @@ export const products: Product[] = [
   {
     id: "p32", sku: "TC-ICC-01", name: "ICE CREAM CAKE", category: "premium",
     price: 125, stock: 12, status: "in-stock",
-    image: "", images: [],
+    ...img("ICE CREAM CAKE"),
     description: "Wedding Cake x Gelato #33. Rich, creamy, vanilla with doughy sweetness.",
     tags: ["cake", "gelato", "creamy"],
     bulk: premiumBulk, viewers: rand(8, 22), recentOrders: rand(2, 6),
@@ -468,7 +460,7 @@ export const products: Product[] = [
   {
     id: "p38", sku: "TC-SC-01", name: "SNOW CAPS", category: "premium",
     price: 128, stock: 10, status: "in-stock",
-    image: "", images: [],
+    ...img("SNOW CAPS"),
     description: "Frosty white trichomes coat every surface. Minty-sweet with potent hybrid effects.",
     tags: ["frosty", "minty", "hybrid"],
     bulk: premiumBulk, viewers: rand(10, 24), recentOrders: rand(3, 7),
@@ -476,8 +468,7 @@ export const products: Product[] = [
   {
     id: "p39", sku: "TC-RB-01", name: "RAINBOW BELTS", category: "premium",
     price: 125, stock: 15, status: "in-stock",
-    image: `${CDN}/v1/gasclub247/products/indoors/rainbow-belts.jpg`,
-    images: [`${CDN}/v1/gasclub247/products/indoors/rainbow-belts.jpg`],
+    ...img("RAINBOW BELTS"),
     description: "Vibrant rainbow terpene profile. Sweet, fruity, and potent with stunning bag appeal.",
     tags: ["indoor", "rainbow", "fruity"],
     bulk: premiumBulk, viewers: rand(10, 20), recentOrders: rand(2, 5),
@@ -485,8 +476,7 @@ export const products: Product[] = [
   {
     id: "p44", sku: "TC-LBG-01", name: "LEMON BERRY GELATO", category: "premium",
     price: 128, stock: 12, status: "in-stock",
-    image: `${CDN}/v1/gasclub247/products/indoors/lemon-berry-gelato.jpg`,
-    images: [`${CDN}/v1/gasclub247/products/indoors/lemon-berry-gelato.jpg`],
+    ...img("LEMON BERRY GELATO"),
     description: "Lemon Berry meets Gelato genetics. Bright citrus nose, creamy finish, premium indoor cure.",
     tags: ["gelato", "lemon", "berry", "indoor"],
     bulk: premiumBulk, viewers: rand(8, 18), recentOrders: rand(2, 5),
@@ -494,8 +484,7 @@ export const products: Product[] = [
   {
     id: "p45", sku: "TC-BJ-01", name: "BLUE JAM", category: "premium",
     price: 122, stock: 18, status: "in-stock",
-    image: `${CDN}/v1/gasclub247/products/indoors/blue-jam.jpg`,
-    images: [`${CDN}/v1/gasclub247/products/indoors/blue-jam.jpg`],
+    ...img("BLUE JAM"),
     description: "Blueberry x Jam genetics. Deep blue hues, sweet berry jam aroma. Smooth hybrid experience.",
     tags: ["blueberry", "hybrid", "sweet"],
     bulk: standardBulk, viewers: rand(6, 14), recentOrders: rand(1, 3),
@@ -504,8 +493,7 @@ export const products: Product[] = [
   {
     id: "p46", sku: "TC-MR-01", name: "MONCLER RUNTZ", category: "premium",
     price: 135, stock: 10, status: "in-stock",
-    image: `${CDN}/v1/gasclub247/products/premium/moncler-runtz.jpg`,
-    images: [`${CDN}/v1/gasclub247/products/premium/moncler-runtz.jpg`],
+    ...img("MONCLER RUNTZ"),
     description: "Designer-tier Runtz phenotype. Ultra-dense, frosty, with loud candy-gas nose. Premium indoor.",
     tags: ["runtz", "premium", "designer", "indoor"],
     bulk: premiumBulk, viewers: rand(14, 30), recentOrders: rand(4, 8),
@@ -513,8 +501,7 @@ export const products: Product[] = [
   {
     id: "p47", sku: "TC-VER-01", name: "VERSACE", category: "premium",
     price: 138, stock: 8, status: "in-stock",
-    image: `${CDN}/v1/gasclub247/products/premium/versace.jpg`,
-    images: [`${CDN}/v1/gasclub247/products/premium/versace.jpg`],
+    ...img("VERSACE"),
     description: "Named for luxury — premium indoor flower with exotic terpene expression. Gold-standard bag appeal.",
     tags: ["luxury", "premium", "exotic", "indoor"],
     bulk: premiumBulk, viewers: rand(16, 32), recentOrders: rand(4, 9),
@@ -522,8 +509,7 @@ export const products: Product[] = [
   {
     id: "p48", sku: "TC-PN-01", name: "PURPLE NERDS", category: "premium",
     price: 130, stock: 12, status: "in-stock",
-    image: `${CDN}/v1/gasclub247/products/premium/purple-nerds.jpg`,
-    images: [`${CDN}/v1/gasclub247/products/premium/purple-nerds.jpg`],
+    ...img("PURPLE NERDS"),
     description: "Grape candy profile with deep purple hues. Sweet, fruity, and visually stunning. Premium indoor.",
     tags: ["purple", "candy", "fruity", "indoor"],
     bulk: premiumBulk, viewers: rand(10, 24), recentOrders: rand(3, 6),
@@ -531,8 +517,7 @@ export const products: Product[] = [
   {
     id: "p49", sku: "TC-LCS-01", name: "LEMON CHERRY SHERBET", category: "premium",
     price: 132, stock: 10, status: "in-stock",
-    image: `${CDN}/v1/gasclub247/products/premium/lemon-cherry-sherbet.jpg`,
-    images: [`${CDN}/v1/gasclub247/products/premium/lemon-cherry-sherbet.jpg`],
+    ...img("LEMON CHERRY SHERBET"),
     description: "Lemon x Cherry Sherbet cross. Tangy citrus nose with a sweet cherry finish. Frosty and dense.",
     tags: ["lemon", "cherry", "sherbet", "premium"],
     bulk: premiumBulk, viewers: rand(12, 26), recentOrders: rand(3, 7),
@@ -544,8 +529,7 @@ export const products: Product[] = [
   {
     id: "p50", sku: "TC-ZALS-01", name: "ZALATO SMALLS", category: "smalls",
     price: 85, stock: 30, status: "in-stock",
-    image: `${CDN}/v1/gasclub247/products/exotic/zalato-sml.jpg`,
-    images: [`${CDN}/v1/gasclub247/products/exotic/zalato-sml.jpg`],
+    ...img("ZALATO SMALLS"),
     description: "Zalato in small bud format. Same sweet Zkittlez x Gelato terps at a value price point.",
     tags: ["smalls", "gelato", "value"],
     bulk: smallsBulk, viewers: rand(6, 14), recentOrders: rand(2, 5),
@@ -553,8 +537,7 @@ export const products: Product[] = [
   {
     id: "p51", sku: "TC-BJS-01", name: "BLUE JAM SMALLS", category: "smalls",
     price: 82, stock: 28, status: "in-stock",
-    image: `${CDN}/v1/gasclub247/products/exotic/blue-jam-sml.jpg`,
-    images: [`${CDN}/v1/gasclub247/products/exotic/blue-jam-sml.jpg`],
+    ...img("BLUE JAM SMALLS"),
     description: "Blue Jam in small bud format. Blueberry jam sweetness at bulk-friendly pricing.",
     tags: ["smalls", "blueberry", "value"],
     bulk: smallsBulk, viewers: rand(4, 12), recentOrders: rand(1, 4),
@@ -566,8 +549,7 @@ export const products: Product[] = [
   {
     id: "p52", sku: "TC-WH-PR", name: "WARHEADZ PRE-ROLL", category: "prerolls",
     price: 15, stock: 50, status: "in-stock",
-    image: `${CDN}/v1/gasclub247/products/pre-rolls/warheadz-preroll.jpg`,
-    images: [`${CDN}/v1/gasclub247/products/pre-rolls/warheadz-preroll.jpg`],
+    ...img("WARHEADZ PRE-ROLL"),
     description: "Warheadz in pre-rolled form. Sour candy punch, quick light, even burn.",
     tags: ["preroll", "sour", "gas"],
     viewers: rand(8, 18), recentOrders: rand(2, 6),
@@ -575,8 +557,7 @@ export const products: Product[] = [
   {
     id: "p53", sku: "TC-SL-PR", name: "SUPREME LATTO PRE-ROLL", category: "prerolls",
     price: 18, stock: 40, status: "in-stock",
-    image: `${CDN}/v1/gasclub247/products/pre-rolls/supreme-latto-preroll.jpg`,
-    images: [`${CDN}/v1/gasclub247/products/pre-rolls/supreme-latto-preroll.jpg`],
+    ...img("SUPREME LATTO PRE-ROLL"),
     description: "Supreme Latto pre-rolled. Sweet pastry terps, hand-packed for premium smoke.",
     tags: ["preroll", "exotic", "pastry"],
     viewers: rand(10, 22), recentOrders: rand(3, 7),
@@ -584,8 +565,7 @@ export const products: Product[] = [
   {
     id: "p54", sku: "TC-PP-PR", name: "PINK PANTHER PRE-ROLL", category: "prerolls",
     price: 15, stock: 35, status: "in-stock",
-    image: `${CDN}/v1/gasclub247/products/pre-rolls/pink-panther-preroll.jpg`,
-    images: [`${CDN}/v1/gasclub247/products/pre-rolls/pink-panther-preroll.jpg`],
+    ...img("PINK PANTHER PRE-ROLL"),
     description: "Pink Panther pre-rolled. Smooth fruity profile, ready to go.",
     tags: ["preroll", "fruity", "smooth"],
     viewers: rand(6, 16), recentOrders: rand(2, 5),
@@ -593,8 +573,7 @@ export const products: Product[] = [
   {
     id: "p55", sku: "TC-LDR-PR", name: "LEMON DIOR RUNTZ PRE-ROLL", category: "prerolls",
     price: 18, stock: 30, status: "in-stock",
-    image: `${CDN}/v1/gasclub247/products/pre-rolls/lemondiorruntz-preroll.jpg`,
-    images: [`${CDN}/v1/gasclub247/products/pre-rolls/lemondiorruntz-preroll.jpg`],
+    ...img("LEMON DIOR RUNTZ PRE-ROLL"),
     description: "Lemon Dior Runtz pre-rolled. Exotic lemon-forward profile, perfectly packed.",
     tags: ["preroll", "lemon", "exotic"],
     viewers: rand(8, 20), recentOrders: rand(2, 6),
@@ -602,8 +581,7 @@ export const products: Product[] = [
   {
     id: "p56", sku: "TC-BP-PR", name: "BERRY POP PRE-ROLL", category: "prerolls",
     price: 15, stock: 45, status: "in-stock",
-    image: `${CDN}/v1/gasclub247/products/pre-rolls/berry-pop-preroll.jpg`,
-    images: [`${CDN}/v1/gasclub247/products/pre-rolls/berry-pop-preroll.jpg`],
+    ...img("BERRY POP PRE-ROLL"),
     description: "Berry Pop pre-rolled. Sweet mixed berry burst, smooth and consistent.",
     tags: ["preroll", "berry", "fruity"],
     viewers: rand(5, 14), recentOrders: rand(1, 4),
@@ -637,7 +615,7 @@ export const posts: Post[] = [
     content: "Premium indoor flower loaded into inventory. Bold cherry-forward profile with top-shelf bag appeal. Members-first access, limited quantities.",
     author: "GASCLUB247", authorAvatar: "https://randomuser.me/api/portraits/men/32.jpg",
     timestamp: "2026-03-24T14:00:00Z",
-    image: `${CDN}/v1775013257/gasclub247/products/platinum-lemon-cherry.jpg`,
+    image: productCardUrl("IMG_2506_iyhfil"),
   },
   {
     id: "post2", type: "promo", pinned: true,
@@ -645,7 +623,7 @@ export const posts: Post[] = [
     content: "Use code PROMO1 for 25% off your first order. One-time use per account. Valid this weekend only.",
     author: "GASCLUB247", authorAvatar: "https://randomuser.me/api/portraits/men/32.jpg",
     timestamp: "2026-03-24T12:00:00Z",
-    image: `${CDN}/v1/gasclub247/products/exotic/gastopia.jpg`,
+    image: productCardUrl("IMG_2260_jaakqk"),
   },
   {
     id: "post3", type: "drop", pinned: false,
@@ -653,7 +631,7 @@ export const posts: Post[] = [
     content: "Boutique drop running low. 6 units remaining. Smooth fruity profile, grab before it's gone.",
     author: "GASCLUB247", authorAvatar: "https://randomuser.me/api/portraits/men/32.jpg",
     timestamp: "2026-03-24T10:00:00Z",
-    image: `${CDN}/v1775013257/gasclub247/products/pink-panther.jpg`,
+    image: productCardUrl("Pink_Panther_Preroll_vbago1"),
   },
   {
     id: "post4", type: "drop", pinned: false,
@@ -661,7 +639,7 @@ export const posts: Post[] = [
     content: "Classic profile back in inventory. Heavy-hitting OG lineage. Bulk buyers DM or request through the club.",
     author: "GASCLUB247", authorAvatar: "https://randomuser.me/api/portraits/men/32.jpg",
     timestamp: "2026-03-23T20:00:00Z",
-    image: `${CDN}/v1/gasclub247/products/pre-rolls/supreme-latto-preroll.jpg`,
+    image: productCardUrl("Supreme_Latto_Pre_Roll_mivpuc"),
   },
   {
     id: "post5", type: "update", pinned: false,
@@ -669,7 +647,7 @@ export const posts: Post[] = [
     content: "Complete catalog loaded. 50+ products across 8 categories — featured sellers, exotic line, candy profiles, gas strains, premium indoor, pre-rolls, and smalls. All live with bulk pricing. Private inventory. Direct access. No middlemen.",
     author: "GASCLUB247", authorAvatar: "https://randomuser.me/api/portraits/men/32.jpg",
     timestamp: "2026-03-23T16:00:00Z",
-    image: `${CDN}/v1/gasclub247/products/indoors/rainbow-belts.jpg`,
+    image: productCardUrl("RAINBOWBELTS3_mqv2i7"),
   },
   {
     id: "post6", type: "review", pinned: false,
@@ -677,7 +655,7 @@ export const posts: Post[] = [
     content: "\"Just got mine in, smell is crazy. The bag appeal on this one is next level. Already reordering.\"",
     author: "D. CARTER", authorAvatar: "https://randomuser.me/api/portraits/men/67.jpg",
     timestamp: "2026-03-23T12:00:00Z",
-    image: `${CDN}/v1775013257/gasclub247/products/platinum-lemon-cherry.jpg`,
+    image: productCardUrl("LEMONBERRYGELATO3_hd5aed"),
   },
   {
     id: "post7", type: "promo", pinned: false,
@@ -685,7 +663,7 @@ export const posts: Post[] = [
     content: "Every strain now has bulk tiers. Quarter pound, half pound, full pound. Wholesale pricing built into each product. Submit bulk orders through the club.",
     author: "GASCLUB247", authorAvatar: "https://randomuser.me/api/portraits/men/32.jpg",
     timestamp: "2026-03-22T18:00:00Z",
-    image: `${CDN}/v1/gasclub247/products/exotic/rainbow-kandy.jpg`,
+    image: productCardUrl("IMG_2258_cdfxup"),
   },
   {
     id: "post8", type: "review", pinned: false,
@@ -693,7 +671,7 @@ export const posts: Post[] = [
     content: "\"Pink panther was clean, definitely grabbing more. Smooth smoke, great flavor profile.\"",
     author: "K. TANAKA", authorAvatar: "https://randomuser.me/api/portraits/men/12.jpg",
     timestamp: "2026-03-22T14:00:00Z",
-    image: `${CDN}/v1775013257/gasclub247/products/pink-panther.jpg`,
+    image: productCardUrl("CANDYRUNTZ3_i5jddr"),
   },
   {
     id: "post9", type: "media", pinned: false,
@@ -701,7 +679,7 @@ export const posts: Post[] = [
     content: "Quality control process and packaging walkthrough. Every unit inspected before shipping.",
     author: "GASCLUB247", authorAvatar: "https://randomuser.me/api/portraits/men/32.jpg",
     timestamp: "2026-03-22T10:00:00Z",
-    image: `${CDN}/v1/gasclub247/products/indoors/blue-jam.jpg`,
+    image: productCardUrl("BLUEJAM3_ny9zbd"),
   },
 ];
 

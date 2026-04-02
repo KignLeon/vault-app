@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { GasclubNavLogo } from "./gasclub-logo";
 import { cn } from "@/lib/utils";
-import { Home, Package, ShoppingCart, Shield, Ticket, Sun, Moon, ShoppingBag, Settings, LogOut, Check, Palette } from "lucide-react";
+import { Home, Package, ShoppingCart, Shield, Ticket, Sun, Moon, ShoppingBag, Settings, LogOut, Check, Palette, X } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./avatar";
 import { useAuth } from "@/lib/auth";
 import { useTheme, COLOR_PROFILES } from "@/lib/theme";
@@ -144,28 +144,39 @@ export function GasclubNav() {
         </div>
       </nav>
 
-      {/* Theme + Color Picker Panel — full-width on mobile */}
-      {showPanel && (
-        <>
-          <div className="fixed inset-0 z-[97]" onClick={() => setShowPanel(false)} />
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="fixed top-[92px] right-4 z-[98] w-[340px] border p-5 theme-panel-mobile shadow-2xl"
-            style={{
-              background: isDark ? "rgba(0,0,0,0.95)" : "rgba(255,255,255,0.98)",
-              borderColor: border,
-            }}
-          >
-            {/* Two columns: Brightness + Color Picker */}
-            <div className="flex gap-5">
-              {/* Left: Brightness */}
-              <div className="flex-1 min-w-0">
-                <p className="font-mono text-[9px] tracking-[0.2em] mb-3" style={{ color: fg, opacity: 0.5 }}>
-                  BRIGHTNESS
-                </p>
-                <div className="flex items-center gap-3">
-                  <Moon size={12} style={{ color: muted, flexShrink: 0 }} />
+      {/* Theme + Color Panel — slides into nav bar filling space to the left */}
+      <AnimatePresence>
+        {showPanel && (
+          <>
+            <div className="fixed inset-0 z-[99]" onClick={() => setShowPanel(false)} />
+            <motion.div
+              initial={{ opacity: 0, x: 40 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 40 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="fixed top-0 left-0 right-0 z-[100] min-h-[88px] flex items-center backdrop-blur-xl"
+              style={{
+                background: isDark ? "rgba(0,0,0,0.96)" : "rgba(255,255,255,0.98)",
+                borderBottom: `1px solid ${border}`,
+              }}
+            >
+              {/* Close / Logo area */}
+              <button
+                onClick={() => setShowPanel(false)}
+                className="px-4 sm:px-6 h-full flex items-center gap-2 font-mono text-[10px] tracking-[0.15em] flex-shrink-0 active:scale-95 transition-transform"
+                style={{ color: muted }}
+              >
+                <Palette size={14} style={{ color: accent }} />
+                <span className="hidden sm:inline">THEME</span>
+              </button>
+
+              {/* Divider */}
+              <div className="w-px h-10" style={{ background: border }} />
+
+              {/* Brightness control */}
+              <div className="flex items-center gap-2 px-3 sm:px-4 flex-shrink-0">
+                <Moon size={11} style={{ color: muted }} />
+                <div className="w-20 sm:w-28">
                   <Slider
                     value={[brightness]}
                     onValueChange={([v]) => setBrightness(v)}
@@ -173,83 +184,82 @@ export function GasclubNav() {
                     max={100}
                     step={1}
                   />
-                  <Sun size={12} style={{ color: muted, flexShrink: 0 }} />
                 </div>
-                <p className="font-mono text-[9px] tracking-wider mt-2 text-center" style={{ color: fg, opacity: 0.3 }}>
+                <Sun size={11} style={{ color: muted }} />
+                <span className="font-mono text-[8px] tracking-wider w-7 text-center" style={{ color: muted }}>
                   {brightness}%
-                </p>
+                </span>
               </div>
 
               {/* Divider */}
-              <div className="w-px" style={{ background: border }} />
+              <div className="w-px h-10" style={{ background: border }} />
 
-              {/* Right: Color Profiles */}
-              <div className="flex-1 min-w-0">
-                <p className="font-mono text-[9px] tracking-[0.2em] mb-3" style={{ color: fg, opacity: 0.5 }}>
-                  THEME
-                </p>
-                <div className="grid grid-cols-5 gap-1.5">
-                  {COLOR_PROFILES.map((profile) => {
-                    const isActive = colorProfile.name === profile.name;
-                    const isNeutral = profile.saturation === 0;
-                    const l = isDark ? 55 : 45;
-                    const swatchGrad = isNeutral
-                      ? (isDark ? 'linear-gradient(135deg, hsl(0,0%,45%), hsl(0,0%,65%))' : 'linear-gradient(135deg, hsl(0,0%,30%), hsl(0,0%,50%))')
-                      : `linear-gradient(135deg, hsl(${profile.hue}, ${profile.saturation}%, ${l}%), hsl(${profile.hue2}, ${profile.saturation2}%, ${l}%))`;
-                    const glowColor = isNeutral
-                      ? (isDark ? 'rgba(160,160,160,0.5)' : 'rgba(80,80,80,0.4)')
-                      : `hsla(${profile.hue}, ${profile.saturation}%, ${l}%, 0.5)`;
-                    return (
-                      <button
-                        key={profile.name}
-                        onClick={() => setColorProfile(profile.name)}
-                        className="flex flex-col items-center gap-1 p-1 rounded transition-all active:scale-90"
+              {/* Color swatches — fill remaining space */}
+              <div className="flex items-center gap-1 sm:gap-1.5 px-3 sm:px-4 overflow-x-auto no-scroll-bar flex-1 min-w-0">
+                {COLOR_PROFILES.map((profile) => {
+                  const isActive = colorProfile.name === profile.name;
+                  const isNeutral = profile.saturation === 0;
+                  const l = isDark ? 55 : 45;
+                  const swatchGrad = isNeutral
+                    ? (isDark ? 'linear-gradient(135deg, hsl(0,0%,45%), hsl(0,0%,65%))' : 'linear-gradient(135deg, hsl(0,0%,30%), hsl(0,0%,50%))')
+                    : `linear-gradient(135deg, hsl(${profile.hue}, ${profile.saturation}%, ${l}%), hsl(${profile.hue2}, ${profile.saturation2}%, ${l}%))`;
+                  const glowColor = isNeutral
+                    ? (isDark ? 'rgba(160,160,160,0.5)' : 'rgba(80,80,80,0.4)')
+                    : `hsla(${profile.hue}, ${profile.saturation}%, ${l}%, 0.5)`;
+                  return (
+                    <button
+                      key={profile.name}
+                      onClick={() => setColorProfile(profile.name)}
+                      className="flex flex-col items-center gap-0.5 p-1 rounded transition-all active:scale-90 flex-shrink-0"
+                      style={{
+                        background: isActive
+                          ? (isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)")
+                          : "transparent",
+                      }}
+                      title={profile.name}
+                    >
+                      <div
+                        className="w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center transition-all"
                         style={{
-                          background: isActive
-                            ? (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.03)")
-                            : "transparent",
+                          background: swatchGrad,
+                          boxShadow: isActive
+                            ? `0 0 0 2px ${isDark ? '#fff' : '#000'}, 0 0 10px ${glowColor}`
+                            : 'none',
                         }}
-                        title={profile.name}
                       >
-                        <div
-                          className="w-5 h-5 rounded-full flex items-center justify-center transition-all"
-                          style={{
-                            background: swatchGrad,
-                            boxShadow: isActive
-                              ? `0 0 0 2px ${isDark ? '#fff' : '#000'}, 0 0 10px ${glowColor}`
-                              : 'none',
-                          }}
-                        >
-                          {isActive && (
-                            <Check size={9} style={{ color: "#fff" }} />
-                          )}
-                        </div>
-                        <span
-                          className="font-mono text-[6px] tracking-wider leading-none truncate w-full text-center"
-                          style={{ color: isActive ? fg : muted }}
-                        >
-                          {profile.name.toUpperCase().slice(0, 7)}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+                        {isActive && (
+                          <Check size={9} style={{ color: "#fff" }} />
+                        )}
+                      </div>
+                      <span
+                        className="font-mono text-[5px] sm:text-[6px] tracking-wider leading-none truncate w-full text-center"
+                        style={{ color: isActive ? fg : muted }}
+                      >
+                        {profile.name.toUpperCase().slice(0, 6)}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
-            </div>
 
-            {/* Active profile label */}
-            <div
-              className="mt-4 pt-3 flex items-center justify-center gap-2"
-              style={{ borderTop: `1px solid ${border}` }}
-            >
-              <span className="text-sm">{colorProfile.emoji}</span>
-              <span className="font-mono text-[9px] tracking-[0.15em]" style={{ color: accent }}>
-                {colorProfile.name.toUpperCase()}
-              </span>
-            </div>
-          </motion.div>
-        </>
-      )}
+              {/* Active theme label + close */}
+              <div className="flex items-center gap-2 px-3 sm:px-5 flex-shrink-0">
+                <span className="text-sm">{colorProfile.emoji}</span>
+                <span className="font-mono text-[8px] sm:text-[9px] tracking-[0.12em] hidden sm:inline" style={{ color: accent }}>
+                  {colorProfile.name.toUpperCase()}
+                </span>
+                <button
+                  onClick={() => setShowPanel(false)}
+                  className="p-1.5 active:scale-90 transition-transform ml-1"
+                  style={{ color: fg }}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Bottom Tabs */}
       <div

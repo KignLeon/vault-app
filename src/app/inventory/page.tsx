@@ -19,6 +19,7 @@ export default function InventoryPage() {
   const [selectedBulk, setSelectedBulk] = useState<BulkTier | null>(null);
   const [allProducts, setAllProducts] = useState<NormalizedProduct[]>(() => getLocalProducts());
   const [loadingProducts, setLoadingProducts] = useState(false);
+  const [galleryIndex, setGalleryIndex] = useState(0);
   const { fg, border, isDark, muted, accent, accentFg, accentGlow, surfaceAccent, surfaceAccentFg } = useTheme();
   const { addToCart, setCartOpen } = useCart();
 
@@ -40,6 +41,7 @@ export default function InventoryPage() {
     setSelectedProduct(product);
     setQty(1);
     setSelectedBulk(null);
+    setGalleryIndex(0);
   };
 
   const currentPrice = selectedBulk ? selectedBulk.price : (selectedProduct?.price || 0) * qty;
@@ -159,17 +161,81 @@ export default function InventoryPage() {
                 </button>
               </div>
 
-              {/* Image */}
-              <div className="aspect-square w-full overflow-hidden" style={{ background: isDark ? "#111" : "#f5f5f5" }}>
-                {selectedProduct.image ? (
-                  <img src={selectedProduct.image} alt={selectedProduct.name} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center gap-3">
-                    <GasclubLogo size={48} style={{ color: border }} accentColor={accent} />
-                    <span className="font-mono text-xs tracking-[0.2em]" style={{ color: muted }}>{selectedProduct.name}</span>
+              {/* Gallery */}
+              {(() => {
+                const galleryImages = selectedProduct.images && selectedProduct.images.length > 0
+                  ? selectedProduct.images
+                  : selectedProduct.image ? [selectedProduct.image] : [];
+                const hasGallery = galleryImages.length > 0;
+                const currentImg = galleryImages[galleryIndex] || galleryImages[0];
+
+                return (
+                  <div className="relative">
+                    <div className="aspect-square w-full overflow-hidden" style={{ background: isDark ? "#111" : "#f5f5f5" }}>
+                      {hasGallery ? (
+                        <img
+                          src={currentImg}
+                          alt={selectedProduct.name}
+                          className="w-full h-full object-cover transition-opacity duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center gap-3">
+                          <GasclubLogo size={48} style={{ color: border }} accentColor={accent} />
+                          <span className="font-mono text-xs tracking-[0.2em]" style={{ color: muted }}>{selectedProduct.name}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Gallery navigation arrows */}
+                    {galleryImages.length > 1 && (
+                      <>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setGalleryIndex(Math.max(0, galleryIndex - 1)); }}
+                          className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full transition-opacity"
+                          style={{ background: "rgba(0,0,0,0.6)", color: "#fff", opacity: galleryIndex === 0 ? 0.3 : 1 }}
+                          disabled={galleryIndex === 0}
+                        >
+                          ‹
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setGalleryIndex(Math.min(galleryImages.length - 1, galleryIndex + 1)); }}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full transition-opacity"
+                          style={{ background: "rgba(0,0,0,0.6)", color: "#fff", opacity: galleryIndex === galleryImages.length - 1 ? 0.3 : 1 }}
+                          disabled={galleryIndex === galleryImages.length - 1}
+                        >
+                          ›
+                        </button>
+                        {/* Image counter */}
+                        <div
+                          className="absolute bottom-2 right-2 font-mono text-[9px] tracking-wider px-2 py-0.5"
+                          style={{ background: "rgba(0,0,0,0.7)", color: "#fff" }}
+                        >
+                          {galleryIndex + 1} / {galleryImages.length}
+                        </div>
+                      </>
+                    )}
+
+                    {/* Thumbnail strip */}
+                    {galleryImages.length > 1 && (
+                      <div className="flex gap-1 p-2 overflow-x-auto no-scroll-bar" style={{ background: isDark ? "#0a0a0a" : "#f0f0f0" }}>
+                        {galleryImages.map((img, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => setGalleryIndex(idx)}
+                            className="w-12 h-12 flex-shrink-0 overflow-hidden border-2 transition-all"
+                            style={{
+                              borderColor: idx === galleryIndex ? accent : "transparent",
+                              opacity: idx === galleryIndex ? 1 : 0.5,
+                            }}
+                          >
+                            <img src={img} alt="" className="w-full h-full object-cover" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                );
+              })()}
 
               {/* Urgency bar */}
               <div className="flex items-center gap-4 px-5 py-2.5" style={{ background: isDark ? "#111" : "#f8f8f8", borderBottom: `1px solid ${border}` }}>

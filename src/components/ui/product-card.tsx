@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { useTheme } from "@/lib/theme";
 import { useCart } from "@/lib/cart";
@@ -14,8 +15,10 @@ export function ProductCard({
   product: NormalizedProduct;
   onClick?: (product: NormalizedProduct) => void;
 }) {
-  const { fg, border, isDark, cardBg, muted, accent, accentFg, surfaceAccent } = useTheme();
+  const { fg, border, isDark, muted, accent, accentFg, surfaceAccent } = useTheme();
   const { addToCart, setCartOpen } = useCart();
+  const [hovered, setHovered] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   const handleAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -25,11 +28,19 @@ export function ProductCard({
 
   const hasBulk = product.bulk && product.bulk.length > 0;
 
+  // Multi-image hover swap: show second image on hover if available
+  const primaryImage = product.image;
+  const hoverImage = product.images && product.images.length > 1 ? product.images[1] : null;
+  const displayImage = (hovered && hoverImage) ? hoverImage : primaryImage;
+  const hasImage = !!primaryImage && !imgError;
+
   return (
     <motion.div
       className="group cursor-pointer text-left outline-none w-full"
       whileHover={{ scale: 1.02 }}
       transition={{ duration: 0.2 }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
       {/* Image */}
       <div
@@ -37,21 +48,43 @@ export function ProductCard({
         style={{ borderColor: border, background: isDark ? "#111" : "#f5f5f5" }}
         onClick={() => onClick?.(product)}
       >
-        {product.image ? (
-          <img
-            src={product.image}
-            alt={product.sku}
-            loading="lazy"
-            className="absolute inset-0 h-full w-full object-cover select-none"
-          />
+        {hasImage ? (
+          <>
+            <img
+              src={displayImage || primaryImage}
+              alt={product.name}
+              loading="lazy"
+              onError={() => setImgError(true)}
+              className="absolute inset-0 h-full w-full object-cover select-none transition-opacity duration-300"
+              style={{ opacity: 1 }}
+            />
+            {/* Subtle crossfade overlay on hover */}
+            {hoverImage && (
+              <img
+                src={hovered ? primaryImage : hoverImage}
+                alt=""
+                loading="lazy"
+                className="absolute inset-0 h-full w-full object-cover select-none transition-opacity duration-500 pointer-events-none"
+                style={{ opacity: 0 }}
+                aria-hidden="true"
+              />
+            )}
+            {/* Image count badge */}
+            {product.images && product.images.length > 1 && (
+              <div
+                className="absolute bottom-1.5 left-1.5 font-mono text-[7px] tracking-wider px-1.5 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                style={{ background: "rgba(0,0,0,0.7)", color: "#fff" }}
+              >
+                {product.images.length} PHOTOS
+              </div>
+            )}
+          </>
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
             <GasclubLogo size={28} style={{ color: `${fg}22` }} accentColor={accent} />
             <span className="font-mono text-[8px] tracking-[0.2em]" style={{ color: muted, opacity: 0.6 }}>{product.name}</span>
           </div>
         )}
-
-        {/* Sold out overlay — hidden from public per user request */}
 
         {/* Top badges — use accentFg for guaranteed contrast */}
         <div className="absolute top-1.5 left-1.5 flex flex-col gap-1">

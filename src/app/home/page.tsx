@@ -12,7 +12,7 @@ import {
   fetchPosts, getLocalPosts, addComment, fetchComments, deletePost, deleteComment,
   type DbPost, type DbComment,
 } from "@/lib/community";
-import { GasclubNavLogo } from "@/components/ui/gasclub-logo";
+import { GasclubNavLogo, GasclubFooterLogo } from "@/components/ui/gasclub-logo";
 import {
   MessageCircle, Heart, Pin, Trash2, ChevronDown, ChevronUp,
   Send, Hash, Zap, Megaphone, Package, Image, Star, Tag, RefreshCw, CheckCircle,
@@ -96,6 +96,8 @@ export default function HomePage() {
               key={heroIdx}
               src={heroUrl(HERO_IMAGES[heroIdx])}
               alt="Featured product"
+              fetchPriority={heroIdx === 0 ? "high" : "low"}
+              decoding="async"
               initial={{ opacity: 0, scale: 1.05 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0 }}
@@ -139,16 +141,20 @@ export default function HomePage() {
               <p className="font-mono text-[10px] tracking-[0.2em]" style={{ color: muted }}>NO POSTS YET</p>
             </div>
           ) : (
-            posts.map((post, i) => (
-              <PostCard
-                key={post.id} post={post} index={i}
-                currentUser={user}
-                isAdmin={isAdmin}
-                isExpanded={activePost === post.id}
-                onToggleComments={() => setActivePost(prev => prev === post.id ? null : post.id)}
-                onDelete={() => handleDeletePost(post.id)}
-              />
-            ))
+            <>
+              {/* ── Pinned Brand Post (always first) ── */}
+              <BrandPost />
+              {posts.map((post, i) => (
+                <PostCard
+                  key={post.id} post={post} index={i + 1}
+                  currentUser={user}
+                  isAdmin={isAdmin}
+                  isExpanded={activePost === post.id}
+                  onToggleComments={() => setActivePost(prev => prev === post.id ? null : post.id)}
+                  onDelete={() => handleDeletePost(post.id)}
+                />
+              ))}
+            </>
           )}
 
           {/* Feed Footer / View Reviews Button for Mobile */}
@@ -219,11 +225,147 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Bottom logo */}
-      <div className="flex flex-col items-center justify-center mt-16 mb-4 gap-3">
-        <GasclubNavLogo isDark={isDark} brightness={isDark ? 0 : 100} />
-      </div>
+      {/* ── Branded Footer ── */}
+      <SiteFooter isDark={isDark} />
     </AppShell>
+  );
+}
+
+// ── Pinned Brand Announcement Post ─────────────────────────────────────────────
+function BrandPost() {
+  const { fg, border, accent, muted, isDark } = useTheme();
+  const [liked, setLiked] = useState(false);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35 }}
+      className="border overflow-hidden mb-6"
+      style={{ borderColor: accent, background: isDark ? "rgba(255,255,255,0.01)" : "rgba(0,0,0,0.01)" }}
+    >
+      {/* Header */}
+      <div className="p-3 sm:p-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full flex flex-shrink-0 items-center justify-center font-mono text-[11px] font-bold overflow-hidden"
+               style={{ border: `1px solid ${accent}`, background: "#000", color: "#fff" }}>
+            G
+          </div>
+          <div className="flex flex-col justify-center">
+            <div className="flex items-center gap-1.5">
+              <span className="font-mono text-[11px] font-bold tracking-wider" style={{ color: fg }}>GASCLUB247</span>
+              <CheckCircle size={10} style={{ color: accent }} />
+            </div>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="flex items-center gap-1 font-mono text-[8px] tracking-wider uppercase text-red-400">
+                <Megaphone size={9} /> ANNOUNCEMENT
+              </span>
+              <span className="font-mono text-[8px]" style={{ color: muted }}>• now</span>
+              <span className="flex items-center gap-0.5 font-mono text-[8px] tracking-wider" style={{ color: accent }}>
+                <Pin size={8} /> PINNED
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Brand Image */}
+      <div className="w-full border-y" style={{ borderColor: border, backgroundColor: "#000", aspectRatio: "1 / 1" }}>
+        <img
+          src="/gc247-brand-drop.svg"
+          alt="GASCLUB247 — Private Inventory Now Live"
+          className="w-full h-full object-cover"
+          loading="eager"
+        />
+      </div>
+
+      {/* Actions */}
+      <div className="px-3 sm:px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setLiked(l => !l)}
+            className="flex items-center gap-1.5 font-mono text-[10px] tracking-wider hover:opacity-70 transition-all active:scale-90"
+            style={{ color: liked ? "#ef4444" : fg }}
+          >
+            <Heart size={18} fill={liked ? "#ef4444" : "none"} className={liked ? "text-red-500" : ""} />
+          </button>
+          <button className="flex items-center gap-1.5 font-mono text-[10px] tracking-wider hover:opacity-70 transition-all active:scale-90" style={{ color: fg }}>
+            <Send size={18} />
+          </button>
+        </div>
+        <div className="flex items-center">
+          <button className="hover:opacity-70 transition-all active:scale-90" style={{ color: fg }}>
+            <Zap size={18} />
+          </button>
+        </div>
+      </div>
+
+      {/* Caption */}
+      <div className="px-3 sm:px-4 pb-4">
+        <div className="font-mono text-[10px] font-bold tracking-wider mb-2" style={{ color: fg }}>
+          {247 + (liked ? 1 : 0)} LIKES
+        </div>
+        <div className="max-w-full">
+          <span className="font-mono text-[10px] font-bold tracking-wider mr-2" style={{ color: fg }}>GASCLUB247</span>
+          <span className="font-mono text-[11px] font-bold tracking-wider mr-1" style={{ color: fg }}>PRIVATE INVENTORY — NOW LIVE —</span>
+          <span className="font-mono text-[11px] leading-relaxed" style={{ color: fg, opacity: 0.85 }}>
+            Direct access. Premium indoor. No middlemen. Members only.
+          </span>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ── Site Footer ─────────────────────────────────────────────────────────────────
+function SiteFooter({ isDark }: { isDark: boolean }) {
+  return (
+    <footer
+      className="mt-20 -mx-4 sm:-mx-6 lg:-mx-8 px-6 py-12"
+      style={{ background: "#000", borderTop: "1px solid rgba(255,255,255,0.08)" }}
+    >
+      <div className="max-w-2xl mx-auto flex flex-col items-center gap-8">
+
+        {/* Logos — GC247 × Lovoson */}
+        <div className="flex items-center gap-5">
+          {/* GASCLUB247 — always white/inverted on black */}
+          <GasclubFooterLogo isDark={true} />
+
+          <span className="font-mono text-[11px]" style={{ color: "rgba(255,255,255,0.3)" }}>×</span>
+
+          {/* Lovoson icon */}
+          <a
+            href="https://lovoson.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="opacity-70 hover:opacity-100 transition-opacity"
+            aria-label="Lovoson"
+          >
+            <img
+              src="/lovoson-icon.svg"
+              alt="Lovoson"
+              style={{ height: 32, width: "auto", filter: "invert(1)" }}
+            />
+          </a>
+        </div>
+
+        {/* Credit line */}
+        <a
+          href="https://lovoson.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-mono text-[9px] tracking-[0.25em] hover:opacity-100 transition-opacity"
+          style={{ color: "rgba(255,255,255,0.35)", letterSpacing: "0.25em" }}
+        >
+          DESIGNED BY LOVOSON
+        </a>
+
+        {/* Legal */}
+        <p className="font-mono text-[8px] tracking-wider text-center" style={{ color: "rgba(255,255,255,0.18)" }}>
+          © {new Date().getFullYear()} GASCLUB247. PRIVATE PLATFORM. ALL RIGHTS RESERVED.
+        </p>
+      </div>
+    </footer>
   );
 }
 

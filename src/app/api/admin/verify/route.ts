@@ -4,18 +4,53 @@ import { createClient } from "@supabase/supabase-js";
 // Server-only — ADMIN_PASSKEY is never sent to the browser
 const ADMIN_PASSKEY = process.env.ADMIN_PASSKEY;
 const ADMIN_EMAIL = "admin@gasclub247.app";
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || ADMIN_PASSKEY || "GASCLUB247";
+// ADMIN_PASSWORD must be set explicitly — no fallback to prevent hardcoded-secret vulnerability
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
+// ── Brute-force protection: max 5 login attempts per IP per 5 minutes ─────────
+const loginAttempts = new Map<string, { count: number; resetAt: number }>();
+
+function isAdminBruteForced(ip: string): boolean {
+  const now = Date.now();
+  const record = loginAttempts.get(ip);
+  if (!record || now > record.resetAt) {
+    loginAttempts.set(ip, { count: 1, resetAt: now + 5 * 60_000 });
+    return false;
+  }
+  record.count++;
+  return record.count > 5; // Hard limit: 5 attempts per 5 minutes
+}
+
 export async function POST(req: NextRequest) {
+  // Rate-limit check before doing anything
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+    || req.headers.get("x-real-ip")
+    || "unknown";
+
+  if (isAdminBruteForced(ip)) {
+    return NextResponse.json(
+      { success: false, error: "Too many attempts. Try again later." },
+      { status: 429 }
+    );
+  }
+
   try {
     const { passkey } = await req.json();
+
 
     if (!ADMIN_PASSKEY) {
       return NextResponse.json(
         { success: false, error: "Admin access not configured" },
+        { status: 500 }
+      );
+    }
+
+    if (!ADMIN_PASSWORD) {
+      return NextResponse.json(
+        { success: false, error: "Admin system not properly configured" },
         { status: 500 }
       );
     }
@@ -28,12 +63,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Passkey is correct — sign in or create the admin account via service role
+    // Passkey is correct — sign in the admin account
     const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Try to sign in first
+    // ── Step 1: Try to sign in with current ADMIN_PASSWORD ─────────────────
     const { data: signInData, error: signInError } =
       await adminClient.auth.signInWithPassword({
         email: ADMIN_EMAIL,
@@ -59,7 +94,60 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Admin account doesn't exist — create it
+    // ── Step 2: Sign-in failed — admin user exists but password is stale ───
+    // Use service role to look up the user and force-update their password
+    const { data: listData, error: listError } =
+      await adminClient.auth.admin.listUsers();
+
+    const existingAdmin = listData?.users?.find(u => u.email === ADMIN_EMAIL);
+
+    if (existingAdmin) {
+      // Force-update the admin user's password to match ADMIN_PASSWORD
+      const { error: updateError } = await adminClient.auth.admin.updateUserById(
+        existingAdmin.id,
+        { password: ADMIN_PASSWORD }
+      );
+
+      if (updateError) {
+        return NextResponse.json(
+          { success: false, error: "Admin password update failed" },
+          { status: 500 }
+        );
+      }
+
+      // Now sign in with the new password
+      const { data: refreshedSession, error: refreshedError } =
+        await adminClient.auth.signInWithPassword({
+          email: ADMIN_EMAIL,
+          password: ADMIN_PASSWORD,
+        });
+
+      if (refreshedError || !refreshedSession.session) {
+        return NextResponse.json(
+          { success: false, error: "Sign-in failed after password update" },
+          { status: 500 }
+        );
+      }
+
+      // Ensure super_admin role
+      await adminClient.from("profiles").upsert({
+        id: refreshedSession.user.id,
+        username: "admin",
+        display_name: "Leon Benefield",
+        email: "leon@lovoson.com",
+        role: "super_admin",
+      });
+
+      return NextResponse.json({
+        success: true,
+        session: {
+          access_token: refreshedSession.session.access_token,
+          refresh_token: refreshedSession.session.refresh_token,
+        },
+      });
+    }
+
+    // ── Step 3: Admin account doesn't exist at all — create it ─────────────
     const { data: signUpData, error: signUpError } =
       await adminClient.auth.admin.createUser({
         email: ADMIN_EMAIL,
@@ -74,12 +162,11 @@ export async function POST(req: NextRequest) {
 
     if (signUpError) {
       return NextResponse.json(
-        { success: false, error: "Admin setup failed" },
+        { success: false, error: "Admin setup failed: " + signUpError.message },
         { status: 500 }
       );
     }
 
-    // Set profile
     if (signUpData.user) {
       await adminClient.from("profiles").upsert({
         id: signUpData.user.id,
@@ -90,7 +177,6 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Now sign in to get a session
     const { data: newSession, error: newSignInError } =
       await adminClient.auth.signInWithPassword({
         email: ADMIN_EMAIL,
@@ -118,6 +204,7 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
 
 // Constant-time string comparison (prevents timing attacks)
 function timingSafeEqual(a: string, b: string): boolean {

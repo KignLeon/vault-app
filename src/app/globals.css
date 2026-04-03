@@ -170,3 +170,37 @@ nav,
   mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
   -webkit-mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
 }
+
+/* ── Performance: content-visibility for off-screen content ──────── */
+/* Defers render cost for items below the fold */
+.product-grid-item {
+  content-visibility: auto;
+  contain-intrinsic-size: 380px;
+}
+
+/* ── Performance: GPU-hint animated elements ─────────────────────── */
+.framer-motion-card,
+[data-framer-component-type] {
+  will-change: opacity, transform;
+}
+
+/* ── Performance: image decoding ─────────────────────────────────── */
+img {
+  image-rendering: auto;
+  image-rendering: -webkit-optimize-contrast;
+}
+
+/* ── Performance: reduce paint cost for fixed elements ───────────── */
+/* Target specific composited elements — avoid broad substring matching */
+nav,
+.gasclub-nav,
+.cart-drawer-overlay,
+.lead-modal-overlay {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* ── Prevent layout shift on image loads ─────────────────────────── */
+img[width][height] {
+  height: auto;
+}

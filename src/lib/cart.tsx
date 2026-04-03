@@ -66,10 +66,9 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | null>(null);
 
-// MVP promo codes — will also be validated server-side
-const PROMO_CODES: Record<string, { discount: number; oneTime: boolean }> = {
-  PROMO1: { discount: 0.25, oneTime: true },
-};
+// ── PROMO CODES REMOVED FROM CLIENT ──────────────────────────────────────────
+// Promo validation now goes through /api/promo/validate (server-side only)
+// Codes and discount values are NEVER stored in the browser bundle
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
@@ -77,6 +76,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [promoApplied, setPromoApplied] = useState(false);
   const [promoError, setPromoError] = useState("");
   const [appliedPromoCode, setAppliedPromoCode] = useState("");
+  const [appliedDiscount, setAppliedDiscount] = useState(0); // fraction e.g. 0.25
   const [shippingMethod, setShippingMethod] = useState("standard");
   const [usedPromoCodes, setUsedPromoCodes] = useState<string[]>([]);
   const [orders, setOrders] = useState<CompletedOrder[]>([]);
@@ -127,6 +127,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems([]);
     setPromoApplied(false);
     setAppliedPromoCode("");
+    setAppliedDiscount(0);
     setPromoCode("");
     setPromoError("");
     try { sessionStorage.removeItem("gc247_cart"); } catch {}
@@ -134,33 +135,59 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const subtotal = items.reduce((sum, i) => sum + i.product.price * i.qty, 0);
 
-  const applyPromo = useCallback(() => {
+  // ── PROMO VALIDATION — Server-side only ────────────────────────────────────
+  const applyPromo = useCallback(async () => {
     const code = promoCode.toUpperCase().trim();
-    const promo = PROMO_CODES[code];
-    if (!promo) {
-      setPromoError("INVALID PROMO CODE");
+    if (!code) return;
+
+    try {
+      const res = await fetch("/api/promo/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+
+      if (res.status === 429) {
+        setPromoError("Too many attempts. Please wait a moment.");
+        setTimeout(() => setPromoError(""), 5000);
+        return;
+      }
+
+      const data = await res.json();
+
+      if (!data.valid) {
+        setPromoError(data.error || "INVALID PROMO CODE");
+        setTimeout(() => setPromoError(""), 3000);
+        return;
+      }
+
+      if (data.oneTime && usedPromoCodes.includes(code)) {
+        setPromoError(`${code} has already been used.`);
+        setTimeout(() => setPromoError(""), 4000);
+        return;
+      }
+
+      setPromoApplied(true);
+      setAppliedPromoCode(code);
+      setAppliedDiscount(data.discount); // server-provided discount value
+      setPromoError("");
+    } catch {
+      setPromoError("Could not validate promo code. Try again.");
       setTimeout(() => setPromoError(""), 3000);
-      return;
     }
-    if (promo.oneTime && usedPromoCodes.includes(code)) {
-      setPromoError(`${code} has already been used on this account.`);
-      setTimeout(() => setPromoError(""), 4000);
-      return;
-    }
-    setPromoApplied(true);
-    setAppliedPromoCode(code);
-    setPromoError("");
   }, [promoCode, usedPromoCodes]);
 
   const removePromo = useCallback(() => {
     setPromoApplied(false);
     setAppliedPromoCode("");
+    setAppliedDiscount(0);
     setPromoCode("");
   }, []);
 
   const discount = promoApplied && appliedPromoCode
-    ? subtotal * (PROMO_CODES[appliedPromoCode]?.discount || 0)
+    ? subtotal * appliedDiscount
     : 0;
+
 
   const ship = shippingOptions.find((s) => s.id === shippingMethod);
   const shippingCost = items.length > 0 ? (ship?.price || 8) : 0;

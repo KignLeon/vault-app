@@ -54,6 +54,7 @@ export function ProductCard({
               src={displayImage || primaryImage}
               alt={product.name}
               loading="lazy"
+              decoding="async"
               onError={() => setImgError(true)}
               className="absolute inset-0 h-full w-full object-cover select-none transition-opacity duration-300"
               style={{ opacity: 1 }}

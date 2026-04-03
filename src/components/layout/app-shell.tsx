@@ -4,6 +4,7 @@ import { GasclubNav } from "@/components/ui/gasclub-nav";
 import { CartDrawer } from "@/components/ui/cart-drawer";
 import { GasclubFooterLogo } from "@/components/ui/gasclub-logo";
 import { ProductTicker } from "@/components/ui/product-ticker";
+import { LeadCaptureModal } from "@/components/ui/lead-capture-modal";
 import { useTheme } from "@/lib/theme";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -63,6 +64,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </footer>
 
       <CartDrawer />
+      <LeadCaptureModal />
     </div>
   );
 }

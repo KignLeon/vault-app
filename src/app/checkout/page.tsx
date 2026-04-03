@@ -7,17 +7,15 @@ import { useCart } from "@/lib/cart";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import { shippingOptions } from "@/lib/data";
-import { Check, ChevronLeft, Lock, Shield, CreditCard, Wallet, Building2, MessageCircle, Sparkles, Package, Truck } from "lucide-react";
+import { Check, ChevronLeft, Lock, Shield, CreditCard, Wallet, Sparkles, Package, Truck } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-type PaymentMethod = "crypto" | "zelle" | "wire" | "telegram";
+type PaymentMethod = "crypto" | "zelle";
 
 const PAYMENT_METHODS: { id: PaymentMethod; label: string; desc: string; next: string; icon: typeof Wallet }[] = [
-  { id: "crypto", label: "CRYPTO", desc: "BTC · ETH · USDT", next: "Wallet address provided after order", icon: Wallet },
-  { id: "zelle", label: "ZELLE", desc: "Instant bank transfer", next: "Transfer details sent via Telegram", icon: CreditCard },
-  { id: "wire", label: "BANK WIRE", desc: "Direct transfer", next: "Routing info provided after order", icon: Building2 },
-  { id: "telegram", label: "TELEGRAM", desc: "Coordinate payment directly", next: "Use your order number to finalize", icon: MessageCircle },
+  { id: "crypto", label: "CRYPTO", desc: "BTC · ETH · USDT", next: "Wallet address sent to your email after order is placed", icon: Wallet },
+  { id: "zelle", label: "ZELLE", desc: "Instant bank transfer", next: "Zelle details sent to your email after order is placed", icon: CreditCard },
 ];
 
 export default function CheckoutPage() {
@@ -228,7 +226,6 @@ export default function CheckoutPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs font-bold" style={{ color: fg }}>${opt.price}</span>
                       {shippingMethod === opt.id && <Check size={14} style={{ color: accent }} />}
                     </div>
                   </button>
@@ -339,7 +336,7 @@ export default function CheckoutPage() {
                   <div className="flex items-center justify-between p-2.5 rounded" style={{ background: "rgba(34,197,94,0.08)" }}>
                     <div className="flex items-center gap-1.5">
                       <Sparkles size={10} style={{ color: "rgb(34,197,94)" }} />
-                      <span className="font-mono text-[10px] tracking-wider font-bold" style={{ color: "rgb(34,197,94)" }}>PROMO1 APPLIED — 25% OFF</span>
+                      <span className="font-mono text-[10px] tracking-wider font-bold" style={{ color: "rgb(34,197,94)" }}>PROMO APPLIED ✓</span>
                     </div>
                     <button onClick={removePromo} className="font-mono text-[9px] tracking-wider active:scale-95 transition-transform" style={{ color: muted }}>
                       REMOVE

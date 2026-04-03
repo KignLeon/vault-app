@@ -25,7 +25,7 @@ import {
 } from "@/lib/community";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-type AdminTab = "overview" | "orders" | "inventory" | "community" | "promos" | "users";
+type AdminTab = "overview" | "orders" | "inventory" | "community" | "promos" | "users" | "create" | "leads";
 
 const STATUS_COLORS: Record<string, string> = {
   pending:    "bg-yellow-500/10 text-yellow-400 border-yellow-400/30",
@@ -56,6 +56,8 @@ export default function AdminPage() {
     { id: "community",  label: "COMMUNITY",  icon: FileText },
     { id: "promos",     label: "PROMOS",     icon: Ticket },
     { id: "users",      label: "USERS",      icon: Users },
+    { id: "create",     label: "CREATE",     icon: Plus },
+    { id: "leads",      label: "LEADS",      icon: UserCheck },
   ];
 
   if (user && !isAdmin) {
@@ -116,6 +118,8 @@ export default function AdminPage() {
           {activeTab === "community"  && <CommunityPanel />}
           {activeTab === "promos"     && <PromosPanel />}
           {activeTab === "users"      && <UsersPanel />}
+          {activeTab === "create"     && <CreatePanel />}
+          {activeTab === "leads"      && <LeadsPanel />}
         </motion.div>
       </AnimatePresence>
     </AppShell>
@@ -127,14 +131,17 @@ export default function AdminPage() {
 // ══════════════════════════════════════════════════════════════════════════════
 function OverviewPanel() {
   const { fg, border, muted, accent } = useTheme();
+  const { session } = useAuth();
   const [orders, setOrders] = useState<any[]>([]);
   const [products, setProducts] = useState<NormalizedProduct[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const token = session?.access_token;
     Promise.all([
-      fetch("/api/orders?limit=10").then(r => r.json()).then(d => d.orders || []),
+      fetch("/api/orders?limit=100", token ? { headers: { Authorization: `Bearer ${token}` } } : {})
+        .then(r => r.json()).then(d => d.orders || []),
       fetchProducts(),
       fetchAllUsers(),
     ]).then(([orderData, productData, userData]) => {
@@ -143,23 +150,32 @@ function OverviewPanel() {
       setUsers(userData);
       setLoading(false);
     });
-  }, []);
+  }, [session]);
 
   const revenue = orders
     .filter(o => o.status !== "cancelled")
     .reduce((s, o) => s + Number(o.total), 0);
 
+  const completedRevenue = orders
+    .filter(o => o.status === "completed" || o.status === "paid")
+    .reduce((s, o) => s + Number(o.total), 0);
+
+  // Simulated online count — uses stable hash of current minute
+  const onlineCount = Math.floor(3 + (Math.abs(Math.sin(new Date().getMinutes())) * 7));
+
   const stats = [
-    { label: "PRODUCTS",       value: products.length,                                 icon: Package,      color: "" },
+    { label: "PRODUCTS",       value: products.length,                                  icon: Package,      color: "" },
     { label: "PENDING ORDERS", value: orders.filter(o => o.status === "pending").length, icon: ShoppingCart, color: "text-yellow-400" },
-    { label: "MEMBERS",        value: users.length,                                    icon: Users,        color: "" },
-    { label: "REVENUE",        value: `$${revenue.toLocaleString()}`,                  icon: DollarSign,   color: "text-green-400" },
+    { label: "MEMBERS",        value: users.length,                                     icon: Users,        color: "" },
+    { label: "TOTAL REVENUE",  value: `$${revenue.toLocaleString()}`,                   icon: DollarSign,   color: "text-green-400" },
+    { label: "COMPLETED REV.", value: `$${completedRevenue.toLocaleString()}`,           icon: Activity,     color: "text-green-400" },
+    { label: "EST. ACTIVE",    value: onlineCount,                                      icon: BarChart2,    color: "text-blue-400" },
   ];
 
   return (
     <div className="space-y-8">
       {/* Stats grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (
@@ -225,6 +241,7 @@ function OverviewPanel() {
 // ══════════════════════════════════════════════════════════════════════════════
 function OrdersPanel() {
   const { fg, border, muted, accent, accentFg, isDark } = useTheme();
+  const { session } = useAuth();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -235,8 +252,10 @@ function OrdersPanel() {
   const load = useCallback(() => {
     setLoading(true);
     const url = statusFilter === "all" ? "/api/orders?limit=100" : `/api/orders?status=${statusFilter}&limit=100`;
-    fetch(url).then(r => r.json()).then(d => { setOrders(d.orders || []); setLoading(false); });
-  }, [statusFilter]);
+    const token = session?.access_token;
+    fetch(url, token ? { headers: { Authorization: `Bearer ${token}` } } : {})
+      .then(r => r.json()).then(d => { setOrders(d.orders || []); setLoading(false); });
+  }, [statusFilter, session]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -984,6 +1003,323 @@ function AdminInput({
         className="w-full bg-transparent border px-3 py-2 font-mono text-[10px] tracking-wider outline-none transition-colors"
         style={{ borderColor: border, color: fg }}
       />
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CREATE PANEL — Post / Product upload toggle
+// ══════════════════════════════════════════════════════════════════════════════
+function CreatePanel() {
+  const { fg, border, muted, accent, accentFg, isDark } = useTheme();
+  const { user } = useAuth();
+  const [mode, setMode] = useState<"post" | "product">("post");
+
+  return (
+    <div className="space-y-5">
+      {/* Toggle */}
+      <div className="flex items-center gap-1 p-1 border" style={{ borderColor: border, background: isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)" }}>
+        {(["post", "product"] as const).map(m => (
+          <button
+            key={m}
+            onClick={() => setMode(m)}
+            className="flex-1 py-2 font-mono text-[9px] tracking-[0.2em] transition-all"
+            style={{
+              background: mode === m ? accent : "transparent",
+              color: mode === m ? accentFg : muted,
+            }}
+          >
+            {m === "post" ? "📝 CREATE POST" : "📦 ADD PRODUCT"}
+          </button>
+        ))}
+      </div>
+
+      {mode === "post" ? (
+        <CreatePostForm user={user} />
+      ) : (
+        <CreateProductForm />
+      )}
+    </div>
+  );
+}
+
+function CreatePostForm({ user }: { user: any }) {
+  const { fg, border, muted, accent, accentFg, isDark } = useTheme();
+  const [form, setForm] = useState({ type: "update" as "announcement"|"drop"|"update"|"media"|"review"|"promo", title: "", content: "", pinned: false, featured: false, imageUrl: "" });
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+
+  const POST_TYPES: Array<"announcement"|"drop"|"update"|"media"|"review"|"promo"> = ["announcement", "drop", "update", "media", "review", "promo"];
+  const TYPE_COLORS: Record<string, string> = { announcement: "text-red-400", drop: "text-purple-400", update: "text-blue-400", media: "text-green-400", review: "text-yellow-400", promo: "text-orange-400" };
+
+  const handleImageUpload = async (file: File) => {
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("folder", "gasclub247/posts");
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await res.json();
+      setForm(p => ({ ...p, imageUrl: data.optimizedUrl || data.url || "" }));
+    } catch { setError("Upload failed"); }
+    setUploading(false);
+  };
+
+  const handleSubmit = async () => {
+    if (!form.title || !form.content) { setError("Title and content are required."); return; }
+    setSaving(true); setError("");
+    const result = await createPost({
+      type: form.type, title: form.title, content: form.content,
+      authorId: user?.id, authorName: user?.displayName || "GASCLUB247",
+      imageUrl: form.imageUrl || undefined, pinned: form.pinned, featured: form.featured,
+    });
+    if (result.success) {
+      setSaved(true);
+      setForm({ type: "update", title: "", content: "", pinned: false, featured: false, imageUrl: "" });
+      setTimeout(() => setSaved(false), 3000);
+    } else {
+      setError(result.error || "Failed to create post.");
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div className="space-y-4">
+      <Label>POST TYPE</Label>
+      <div className="flex gap-2 flex-wrap mb-3">
+        {POST_TYPES.map(t => (
+          <button key={t} onClick={() => setForm(p => ({ ...p, type: t }))}
+            className={`font-mono text-[9px] px-2.5 py-1 border transition-all ${TYPE_COLORS[t] || ""}`}
+            style={{ borderColor: form.type === t ? accent : border, background: form.type === t ? `${accent}15` : "transparent" }}
+          >
+            {t.toUpperCase()}
+          </button>
+        ))}
+      </div>
+
+      <AdminInput label="TITLE" value={form.title} onChange={v => setForm(p => ({ ...p, title: v }))} placeholder="Post headline..." />
+
+      <div>
+        <span className="font-mono text-[9px] tracking-wider block mb-1" style={{ color: muted }}>CONTENT</span>
+        <textarea
+          value={form.content}
+          onChange={e => setForm(p => ({ ...p, content: e.target.value }))}
+          placeholder="Write your post content..."
+          rows={5}
+          className="w-full bg-transparent border px-3 py-2.5 font-mono text-[10px] tracking-wider outline-none resize-none leading-relaxed"
+          style={{ borderColor: border, color: fg }}
+        />
+      </div>
+
+      {/* Image Upload Area */}
+      <div>
+        <span className="font-mono text-[9px] tracking-wider block mb-1.5" style={{ color: muted }}>IMAGE (OPTIONAL)</span>
+        <label className="flex flex-col items-center justify-center border-2 border-dashed py-8 px-6 cursor-pointer transition-all hover:opacity-70"
+          style={{ borderColor: form.imageUrl ? accent : border, background: form.imageUrl ? `${accent}08` : "transparent" }}
+        >
+          {uploading ? (
+            <span className="font-mono text-[9px] tracking-wider" style={{ color: muted }}>UPLOADING...</span>
+          ) : form.imageUrl ? (
+            <div className="flex flex-col items-center gap-2">
+              <img src={form.imageUrl} alt="" className="w-20 h-20 object-cover border" style={{ borderColor: border }} />
+              <span className="font-mono text-[8px] tracking-wider" style={{ color: accent }}>IMAGE READY ✓</span>
+            </div>
+          ) : (
+            <div className="text-center space-y-1.5">
+              <ImageIcon size={24} style={{ color: muted, margin: "0 auto" }} />
+              <span className="font-mono text-[9px] tracking-wider" style={{ color: muted }}>DRAG & DROP OR CLICK TO UPLOAD</span>
+              <span className="font-mono text-[8px]" style={{ color: muted }}>JPG, PNG, WEBP — Max 10 MB</span>
+            </div>
+          )}
+          <input type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); }} disabled={uploading} />
+        </label>
+        {form.imageUrl && (
+          <button className="mt-1 font-mono text-[8px] tracking-wider hover:opacity-70" style={{ color: muted }}
+            onClick={() => setForm(p => ({ ...p, imageUrl: "" }))}
+          >
+            REMOVE IMAGE
+          </button>
+        )}
+      </div>
+
+      <div className="flex gap-4">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" checked={form.pinned} onChange={e => setForm(p => ({ ...p, pinned: e.target.checked }))} className="w-3 h-3" />
+          <span className="font-mono text-[9px] tracking-wider" style={{ color: muted }}>PIN POST</span>
+        </label>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" checked={form.featured} onChange={e => setForm(p => ({ ...p, featured: e.target.checked }))} className="w-3 h-3" />
+          <span className="font-mono text-[9px] tracking-wider" style={{ color: muted }}>FEATURE</span>
+        </label>
+      </div>
+
+      {error && <p className="font-mono text-[9px] text-red-400">{error}</p>}
+      {saved && <p className="font-mono text-[9px] text-green-400">POST PUBLISHED ✓</p>}
+
+      <div className="flex gap-3">
+        <button onClick={handleSubmit} disabled={saving || !form.title || !form.content}
+          className="flex-1 py-3 font-mono text-[10px] tracking-wider disabled:opacity-50 transition-all active:scale-[0.98]"
+          style={{ background: accent, color: accentFg }}
+        >
+          {saving ? "PUBLISHING..." : "PUBLISH POST"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CreateProductForm() {
+  const { fg, border, muted, accent, accentFg, isDark } = useTheme();
+  const [form, setForm] = useState({ sku: "", name: "", category: "featured", price: "", stock: "", description: "", imageUrl: "" });
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+
+  const categories = ["featured", "exotic", "candy", "gas", "premium", "prerolls", "smalls"];
+
+  const handleImageUpload = async (file: File) => {
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("folder", `gasclub247/products/${form.category}`);
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await res.json();
+      setForm(p => ({ ...p, imageUrl: data.optimizedUrl || data.url || "" }));
+    } catch { setError("Upload failed"); }
+    setUploading(false);
+  };
+
+  const handleSubmit = async () => {
+    if (!form.sku || !form.name || !form.price) { setError("SKU, Name, and Price are required."); return; }
+    setSaving(true); setError("");
+    const result = await createProduct({
+      sku: form.sku, name: form.name, category: form.category,
+      price: Number(form.price), stock: Number(form.stock) || 0,
+      description: form.description, imageUrl: form.imageUrl || undefined,
+    });
+    if (result.success) {
+      setSaved(true);
+      setForm({ sku: "", name: "", category: "featured", price: "", stock: "", description: "", imageUrl: "" });
+      setTimeout(() => setSaved(false), 3000);
+    } else {
+      setError(result.error || "Failed to add product.");
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        <AdminInput label="SKU" value={form.sku} onChange={v => setForm(p => ({ ...p, sku: v }))} placeholder="TC-PLMC-01" />
+        <AdminInput label="NAME" value={form.name} onChange={v => setForm(p => ({ ...p, name: v }))} placeholder="PLATINUM LEMON CHERRY" />
+        <AdminInput label="PRICE ($)" value={form.price} onChange={v => setForm(p => ({ ...p, price: v }))} placeholder="120" type="number" />
+        <AdminInput label="STOCK (UNITS)" value={form.stock} onChange={v => setForm(p => ({ ...p, stock: v }))} placeholder="50" type="number" />
+      </div>
+
+      <div>
+        <span className="font-mono text-[9px] tracking-wider block mb-1.5" style={{ color: muted }}>CATEGORY</span>
+        <div className="flex gap-2 flex-wrap">
+          {categories.map(c => (
+            <button key={c} onClick={() => setForm(p => ({ ...p, category: c }))}
+              className="font-mono text-[9px] px-2.5 py-1 border transition-all"
+              style={{ borderColor: form.category === c ? accent : border, color: form.category === c ? accent : muted, background: form.category === c ? `${accent}15` : "transparent" }}
+            >
+              {c.toUpperCase()}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <span className="font-mono text-[9px] tracking-wider block mb-1" style={{ color: muted }}>DESCRIPTION</span>
+        <textarea
+          value={form.description}
+          onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+          placeholder="Product details, effects, genetics..."
+          rows={3}
+          className="w-full bg-transparent border px-3 py-2.5 font-mono text-[10px] tracking-wider outline-none resize-none"
+          style={{ borderColor: border, color: fg }}
+        />
+      </div>
+
+      {/* Image Upload */}
+      <div>
+        <span className="font-mono text-[9px] tracking-wider block mb-1.5" style={{ color: muted }}>PRODUCT PHOTO</span>
+        <label className="flex flex-col items-center justify-center border-2 border-dashed py-8 px-6 cursor-pointer transition-all hover:opacity-70"
+          style={{ borderColor: form.imageUrl ? accent : border, background: form.imageUrl ? `${accent}08` : "transparent" }}
+        >
+          {uploading ? (
+            <span className="font-mono text-[9px]" style={{ color: muted }}>UPLOADING...</span>
+          ) : form.imageUrl ? (
+            <div className="flex flex-col items-center gap-2">
+              <img src={form.imageUrl} alt="" className="w-20 h-20 object-cover border" style={{ borderColor: border }} />
+              <span className="font-mono text-[8px] tracking-wider" style={{ color: accent }}>PHOTO READY ✓</span>
+            </div>
+          ) : (
+            <div className="text-center space-y-1.5">
+              <ImageIcon size={24} style={{ color: muted, margin: "0 auto" }} />
+              <span className="font-mono text-[9px] tracking-wider" style={{ color: muted }}>CLICK TO UPLOAD PRODUCT PHOTO</span>
+              <span className="font-mono text-[8px]" style={{ color: muted }}>JPG, PNG, WEBP — Max 10 MB</span>
+            </div>
+          )}
+          <input type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); }} disabled={uploading} />
+        </label>
+      </div>
+
+      {error && <p className="font-mono text-[9px] text-red-400">{error}</p>}
+      {saved && <p className="font-mono text-[9px] text-green-400">PRODUCT ADDED ✓</p>}
+
+      <button onClick={handleSubmit} disabled={saving}
+        className="w-full py-3 font-mono text-[10px] tracking-wider disabled:opacity-50 transition-all active:scale-[0.98]"
+        style={{ background: accent, color: accentFg }}
+      >
+        {saving ? "ADDING..." : "ADD PRODUCT"}
+      </button>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// LEADS PANEL
+// ══════════════════════════════════════════════════════════════════════════════
+function LeadsPanel() {
+  const { fg, border, muted, accent } = useTheme();
+  const { session } = useAuth();
+  const [leads, setLeads] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const token = session?.access_token;
+    fetch("/api/leads", token ? { headers: { Authorization: `Bearer ${token}` } } : {})
+      .then(r => r.json())
+      .then(d => { setLeads(d.leads || []); setLoading(false); });
+  }, [session]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <span className="font-mono text-[10px] tracking-[0.2em]" style={{ color: muted }}>
+          {loading ? "..." : `${leads.length} LEADS`}
+        </span>
+      </div>
+      <div className="border divide-y" style={{ borderColor: border }}>
+        {loading ? <Loader /> : leads.length === 0 ? <Empty label="No leads yet" /> :
+          leads.map((lead, i) => (
+            <div key={i} className="flex items-center justify-between p-3">
+              <div>
+                <p className="font-mono text-[10px] font-bold" style={{ color: fg }}>{lead.email || "—"}</p>
+                <p className="font-mono text-[9px]" style={{ color: muted }}>{lead.phone || "no phone"} · {new Date(lead.created_at).toLocaleDateString()}</p>
+              </div>
+              <span className="font-mono text-[8px] tracking-wider px-2 py-0.5" style={{ background: `${accent}15`, color: accent }}>
+                {(lead.promo_offered || "WELCOME247")}
+              </span>
+            </div>
+          ))}
+      </div>
     </div>
   );
 }

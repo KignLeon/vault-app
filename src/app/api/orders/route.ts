@@ -83,13 +83,36 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// ── GET /api/orders — Fetch orders (admin) ────────────────────────────────────
+// ── GET /api/orders — Fetch orders (admin only) ────────────────────────────────
 export async function GET(request: NextRequest) {
+  // Require valid admin Bearer token
+  const authHeader = request.headers.get("authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const token = authHeader.slice(7);
+  const admin = getAdminClient();
+
+  const { data: { user }, error: authError } = await admin.auth.getUser(token);
+  if (authError || !user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile || !["admin", "super_admin"].includes(profile.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status");
   const limit = Number(searchParams.get("limit") || "50");
 
-  const admin = getAdminClient();
   let query = admin.from("orders").select("*").order("created_at", { ascending: false }).limit(limit);
 
   if (status && status !== "all") {
@@ -101,6 +124,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({ orders: data || [] });
 }
+
 
 // ── PATCH /api/orders — Update order status (admin) ───────────────────────────
 export async function PATCH(request: NextRequest) {

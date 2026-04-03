@@ -603,7 +603,7 @@ export const categories = [
 // ---- SHIPPING ----
 export const shippingOptions = [
   { id: "standard", label: "STANDARD SHIPPING", price: 8, est: "5-7 business days" },
-  { id: "priority", label: "PRIORITY SHIPPING", price: 15, est: "2-3 business days" },
+  { id: "priority", label: "INSURED SHIPPING", price: 15, est: "2-3 business days" },
   { id: "bulk", label: "BULK / SPECIAL HANDLING", price: 25, est: "Contact for ETA" },
 ];
 

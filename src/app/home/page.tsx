@@ -6,16 +6,15 @@ import { ReviewsColumn } from "@/components/ui/community-feed";
 import { feedbackData } from "@/lib/data";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
-import { heroUrl, HERO_IMAGES, productCardUrl } from "@/lib/cloudinary-assets";
+import { heroUrl, HERO_IMAGES } from "@/lib/cloudinary-assets";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  fetchPosts, getLocalPosts, addComment, fetchComments, deletePost, deleteComment,
-  type DbPost, type DbComment,
+  fetchPosts, getLocalPosts, deletePost,
+  type DbPost,
 } from "@/lib/community";
-import { GasclubNavLogo, GasclubFooterLogo } from "@/components/ui/gasclub-logo";
+import { GasclubFooterLogo } from "@/components/ui/gasclub-logo";
 import {
-  MessageCircle, Heart, Pin, Trash2, ChevronDown, ChevronUp,
-  Send, Hash, Zap, Megaphone, Package, Image, Star, Tag, RefreshCw, CheckCircle,
+  Pin, Trash2, Megaphone, Package, Image, Star, Tag, RefreshCw, CheckCircle, Hash,
 } from "lucide-react";
 
 const firstCol = feedbackData.slice(0, 4);
@@ -147,10 +146,7 @@ export default function HomePage() {
               {posts.map((post, i) => (
                 <PostCard
                   key={post.id} post={post} index={i + 1}
-                  currentUser={user}
                   isAdmin={isAdmin}
-                  isExpanded={activePost === post.id}
-                  onToggleComments={() => setActivePost(prev => prev === post.id ? null : post.id)}
                   onDelete={() => handleDeletePost(post.id)}
                 />
               ))}
@@ -234,7 +230,6 @@ export default function HomePage() {
 // ── Pinned Brand Announcement Post ─────────────────────────────────────────────
 function BrandPost() {
   const { fg, border, accent, muted, isDark } = useTheme();
-  const [liked, setLiked] = useState(false);
 
   return (
     <motion.div
@@ -245,32 +240,30 @@ function BrandPost() {
       style={{ borderColor: accent, background: isDark ? "rgba(255,255,255,0.01)" : "rgba(0,0,0,0.01)" }}
     >
       {/* Header */}
-      <div className="p-3 sm:p-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full flex flex-shrink-0 items-center justify-center font-mono text-[11px] font-bold overflow-hidden"
-               style={{ border: `1px solid ${accent}`, background: "#000", color: "#fff" }}>
-            G
+      <div className="p-3 sm:p-4 flex items-center gap-3">
+        <div className="w-8 h-8 rounded-full flex flex-shrink-0 items-center justify-center font-mono text-[11px] font-bold"
+             style={{ border: `1px solid ${accent}`, background: "#000", color: "#fff" }}>
+          G
+        </div>
+        <div className="flex flex-col justify-center">
+          <div className="flex items-center gap-1.5">
+            <span className="font-mono text-[11px] font-bold tracking-wider" style={{ color: fg }}>GASCLUB247</span>
+            <CheckCircle size={10} style={{ color: accent }} />
           </div>
-          <div className="flex flex-col justify-center">
-            <div className="flex items-center gap-1.5">
-              <span className="font-mono text-[11px] font-bold tracking-wider" style={{ color: fg }}>GASCLUB247</span>
-              <CheckCircle size={10} style={{ color: accent }} />
-            </div>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="flex items-center gap-1 font-mono text-[8px] tracking-wider uppercase text-red-400">
-                <Megaphone size={9} /> ANNOUNCEMENT
-              </span>
-              <span className="font-mono text-[8px]" style={{ color: muted }}>• now</span>
-              <span className="flex items-center gap-0.5 font-mono text-[8px] tracking-wider" style={{ color: accent }}>
-                <Pin size={8} /> PINNED
-              </span>
-            </div>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="flex items-center gap-1 font-mono text-[8px] tracking-wider uppercase text-red-400">
+              <Megaphone size={9} /> ANNOUNCEMENT
+            </span>
+            <span className="font-mono text-[8px]" style={{ color: muted }}>• now</span>
+            <span className="flex items-center gap-0.5 font-mono text-[8px] tracking-wider" style={{ color: accent }}>
+              <Pin size={8} /> PINNED
+            </span>
           </div>
         </div>
       </div>
 
       {/* Brand Image */}
-      <div className="w-full border-y" style={{ borderColor: border, backgroundColor: "#000", aspectRatio: "1 / 1" }}>
+      <div className="w-full" style={{ borderColor: border, backgroundColor: "#000", aspectRatio: "1 / 1" }}>
         <img
           src="/gc247-brand-drop.svg"
           alt="GASCLUB247 — Private Inventory Now Live"
@@ -279,36 +272,12 @@ function BrandPost() {
         />
       </div>
 
-      {/* Actions */}
-      <div className="px-3 sm:px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => setLiked(l => !l)}
-            className="flex items-center gap-1.5 font-mono text-[10px] tracking-wider hover:opacity-70 transition-all active:scale-90"
-            style={{ color: liked ? "#ef4444" : fg }}
-          >
-            <Heart size={18} fill={liked ? "#ef4444" : "none"} className={liked ? "text-red-500" : ""} />
-          </button>
-          <button className="flex items-center gap-1.5 font-mono text-[10px] tracking-wider hover:opacity-70 transition-all active:scale-90" style={{ color: fg }}>
-            <Send size={18} />
-          </button>
-        </div>
-        <div className="flex items-center">
-          <button className="hover:opacity-70 transition-all active:scale-90" style={{ color: fg }}>
-            <Zap size={18} />
-          </button>
-        </div>
-      </div>
-
       {/* Caption */}
-      <div className="px-3 sm:px-4 pb-4">
-        <div className="font-mono text-[10px] font-bold tracking-wider mb-2" style={{ color: fg }}>
-          {247 + (liked ? 1 : 0)} LIKES
-        </div>
+      <div className="px-3 sm:px-4 py-4">
         <div className="max-w-full">
           <span className="font-mono text-[10px] font-bold tracking-wider mr-2" style={{ color: fg }}>GASCLUB247</span>
           <span className="font-mono text-[11px] font-bold tracking-wider mr-1" style={{ color: fg }}>PRIVATE INVENTORY — NOW LIVE —</span>
-          <span className="font-mono text-[11px] leading-relaxed" style={{ color: fg, opacity: 0.85 }}>
+          <span className="font-mono text-[11px] leading-relaxed" style={{ color: fg, opacity: 0.8 }}>
             Direct access. Premium indoor. No middlemen. Members only.
           </span>
         </div>
@@ -371,57 +340,16 @@ function SiteFooter({ isDark }: { isDark: boolean }) {
 
 // ── Post Card ──────────────────────────────────────────────────────────────────
 function PostCard({
-  post, index, currentUser, isAdmin, isExpanded, onToggleComments, onDelete,
+  post, index, isAdmin, onDelete,
 }: {
   post: DbPost;
   index: number;
-  currentUser: any;
   isAdmin: boolean;
-  isExpanded: boolean;
-  onToggleComments: () => void;
   onDelete: () => void;
 }) {
-  const { fg, border, muted, accent, accentFg, cardBg, isDark } = useTheme();
+  const { fg, border, muted, accent, cardBg, isDark } = useTheme();
   const TypeConfig = TYPE_CONFIG[post.type] || TYPE_CONFIG.update;
   const Icon = TypeConfig.icon;
-  const [comments, setComments] = useState<DbComment[]>([]);
-  const [commentsLoaded, setCommentsLoaded] = useState(false);
-  const [newComment, setNewComment] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [liked, setLiked] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (isExpanded && !commentsLoaded) {
-      fetchComments(post.id).then(d => { setComments(d); setCommentsLoaded(true); });
-    }
-  }, [isExpanded, post.id, commentsLoaded]);
-
-  const handleComment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newComment.trim() || !currentUser) return;
-    setSubmitting(true);
-    const result = await addComment({
-      postId: post.id,
-      authorId: currentUser.id,
-      authorName: currentUser.displayName || currentUser.username,
-      authorAvatar: currentUser.avatar,
-      content: newComment.trim(),
-    });
-    if (result.success && result.comment) {
-      setComments(prev => [...prev, result.comment!]);
-      setNewComment("");
-    }
-    setSubmitting(false);
-  };
-
-  const handleDeleteComment = async (commentId: string) => {
-    await deleteComment(commentId);
-    setComments(prev => prev.filter(c => c.id !== commentId));
-  };
-
-  const canDeleteComment = (comment: DbComment) =>
-    isAdmin || comment.author_id === currentUser?.id;
 
   return (
     <motion.div
@@ -434,19 +362,19 @@ function PostCard({
         background: cardBg || (isDark ? "rgba(255,255,255,0.01)" : "rgba(0,0,0,0.01)"),
       }}
     >
-      {/* 1. Header (Avatar, Name, Time, Type) */}
+      {/* Header */}
       <div className="p-3 sm:p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full flex flex-shrink-0 items-center justify-center font-mono text-[11px] font-bold overflow-hidden" 
+          <div className="w-8 h-8 rounded-full flex flex-shrink-0 items-center justify-center font-mono text-[11px] font-bold"
                style={{ border: `1px solid ${border}`, background: isDark ? "#111" : "#eee", color: fg }}>
-             {(post.author_name || "G")[0]?.toUpperCase()}
+            {(post.author_name || "G")[0]?.toUpperCase()}
           </div>
           <div className="flex flex-col justify-center">
             <div className="flex items-center gap-1.5">
-               <span className="font-mono text-[11px] font-bold tracking-wider cursor-pointer hover:underline" style={{ color: fg }}>
-                 {post.author_name || "GASCLUB247"}
-               </span>
-               {(post.author_name === "GASCLUB247" || post.featured) && <CheckCircle size={10} style={{ color: accent }} />}
+              <span className="font-mono text-[11px] font-bold tracking-wider" style={{ color: fg }}>
+                {post.author_name || "GASCLUB247"}
+              </span>
+              {(post.author_name === "GASCLUB247" || post.featured) && <CheckCircle size={10} style={{ color: accent }} />}
             </div>
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className={`flex items-center gap-1 font-mono text-[8px] tracking-wider uppercase ${TypeConfig.color}`}>
@@ -462,164 +390,37 @@ function PostCard({
           </div>
         </div>
         {isAdmin && (
-           <button onClick={onDelete} className="p-2 hover:text-red-400 transition-colors active:scale-90" style={{ color: muted }}>
-             <Trash2 size={13} />
-           </button>
-        )}
-      </div>
-
-      {/* 2. Media (Full Width) */}
-      {post.image_url ? (
-        <div className="w-full relative border-y" style={{ borderColor: border, backgroundColor: isDark ? "#000" : "#f5f5f5", aspectRatio: "1 / 1" }}>
-          <img src={post.image_url} alt={post.title} className="w-full h-full object-cover" />
-        </div>
-      ) : (
-        <div className="px-4 py-2">
-          {/* Divider if no image */}
-          <div className="w-full h-px mb-2" style={{ background: border }} />
-        </div>
-      )}
-
-      {/* 3. Actions Bar */}
-      <div className="px-3 sm:px-4 py-3 flex items-center justify-between">
-         <div className="flex items-center gap-4">
-            <button
-              onClick={() => setLiked(l => !l)}
-              className="flex items-center gap-1.5 font-mono text-[10px] tracking-wider hover:opacity-70 transition-all active:scale-90"
-              style={{ color: liked ? "#ef4444" : fg }}
-            >
-              <Heart size={18} fill={liked ? "#ef4444" : "none"} className={liked ? "text-red-500" : ""} />
-            </button>
-            <button
-              onClick={onToggleComments}
-              className="flex items-center gap-1.5 font-mono text-[10px] tracking-wider hover:opacity-70 transition-all active:scale-90"
-              style={{ color: isExpanded ? accent : fg }}
-            >
-              <MessageCircle size={18} />
-            </button>
-            <button className="flex items-center gap-1.5 font-mono text-[10px] tracking-wider hover:opacity-70 transition-all active:scale-90" style={{ color: fg }}>
-              <Send size={18} />
-            </button>
-         </div>
-         <div className="flex items-center">
-            <button className="hover:opacity-70 transition-all active:scale-90" style={{ color: fg }}>
-              <Zap size={18} />
-            </button>
-         </div>
-      </div>
-
-      {/* 4. Caption & Engagement Details */}
-      <div className="px-3 sm:px-4 pb-4">
-        {/* Likes Count */}
-        <div className="font-mono text-[10px] font-bold tracking-wider mb-2" style={{ color: fg }}>
-          {post.likes + (liked ? 1 : 0)} LIKES
-        </div>
-        
-        {/* Caption */}
-        <div className="max-w-full">
-          <span className="font-mono text-[10px] font-bold tracking-wider mr-2 cursor-pointer hover:underline" style={{ color: fg }}>
-            {post.author_name || "GASCLUB247"}
-          </span>
-          <span className="font-mono text-[11px] font-bold tracking-wider mr-1" style={{ color: fg }}>
-            {post.title} —
-          </span>
-          <span className="font-mono text-[11px] leading-relaxed" style={{ color: fg, opacity: 0.85 }}>
-            {post.content}
-          </span>
-        </div>
-        
-        {/* Comments Prompt */}
-        {!isExpanded && (
-          <button 
-            onClick={onToggleComments}
-            className="font-mono text-[10px] mt-2 tracking-wider hover:underline" 
-            style={{ color: muted }}
-          >
-            {comments.length > 0 ? `VIEW ALL ${comments.length} COMMENTS` : "ADD A COMMENT..."}
+          <button onClick={onDelete} className="p-2 hover:text-red-400 transition-colors active:scale-90" style={{ color: muted }}>
+            <Trash2 size={13} />
           </button>
         )}
       </div>
 
-      {/* Comments section */}
-      <AnimatePresence>
-        {isExpanded && (
-          <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} className="overflow-hidden">
-            <div className="border-t" style={{ borderColor: border }}>
-              {/* Existing comments */}
-              {comments.length > 0 && (
-                <div className="divide-y" style={{ borderColor: border }}>
-                  {comments.map(comment => (
-                    <div key={comment.id} className="px-4 py-3 flex items-start gap-3">
-                      <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 font-mono text-[9px] font-bold"
-                        style={{ background: border, color: fg }}>
-                        {(comment.author_name || "?")[0]?.toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-[9px] font-bold" style={{ color: fg }}>@{comment.author_name}</span>
-                          <span className="font-mono text-[8px]" style={{ color: muted }}>{formatTime(comment.created_at)}</span>
-                        </div>
-                        <p className="font-mono text-[10px] mt-0.5 leading-relaxed" style={{ color: muted }}>{comment.content}</p>
-                      </div>
-                      {canDeleteComment(comment) && (
-                        <button onClick={() => handleDeleteComment(comment.id)} className="p-0.5 hover:text-red-400 transition-colors flex-shrink-0" style={{ color: muted }}>
-                          <X size={10} />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+      {/* Media */}
+      {post.image_url && (
+        <div className="w-full" style={{ backgroundColor: isDark ? "#000" : "#f5f5f5", aspectRatio: "1 / 1" }}>
+          <img src={post.image_url} alt={post.title} className="w-full h-full object-cover" />
+        </div>
+      )}
 
-              {comments.length === 0 && commentsLoaded && (
-                <div className="px-4 py-4 text-center">
-                  <p className="font-mono text-[9px] tracking-wider" style={{ color: muted }}>NO COMMENTS YET — BE FIRST</p>
-                </div>
-              )}
-
-              {/* Comment input */}
-              {currentUser ? (
-                <form onSubmit={handleComment} className="flex items-center gap-2 px-4 py-3 border-t" style={{ borderColor: border }}>
-                  <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 font-mono text-[9px] font-bold"
-                    style={{ background: accent, color: accentFg }}>
-                    {(currentUser.displayName || "?")[0]?.toUpperCase()}
-                  </div>
-                  <input
-                    ref={inputRef}
-                    value={newComment}
-                    onChange={e => setNewComment(e.target.value)}
-                    placeholder="Write a comment…"
-                    className="flex-1 bg-transparent font-mono text-[10px] outline-none"
-                    style={{ color: fg }}
-                    disabled={submitting}
-                  />
-                  <button type="submit" disabled={!newComment.trim() || submitting}
-                    className="p-1.5 transition-all disabled:opacity-30 active:scale-90"
-                    style={{ color: accent }}
-                  >
-                    <Send size={13} />
-                  </button>
-                </form>
-              ) : (
-                <div className="px-4 py-3 border-t text-center" style={{ borderColor: border }}>
-                  <p className="font-mono text-[9px] tracking-wider" style={{ color: muted }}>LOG IN TO COMMENT</p>
-                </div>
-              )}
-            </div>
-          </motion.div>
+      {/* Content */}
+      <div className="px-4 py-4">
+        <div className="font-mono text-[11px] font-bold tracking-wider mb-1" style={{ color: fg }}>
+          {post.title}
+        </div>
+        {post.content && (
+          <p className="font-mono text-[11px] leading-relaxed" style={{ color: fg, opacity: 0.8 }}>
+            {post.content}
+          </p>
         )}
-      </AnimatePresence>
+        <p className="font-mono text-[8px] tracking-wider mt-3" style={{ color: muted }}>
+          {formatTime(post.created_at)}
+        </p>
+      </div>
     </motion.div>
   );
 }
 
-function X({ size }: { size: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M18 6L6 18M6 6l12 12" />
-    </svg>
-  );
-}
 
 function formatTime(ts: string): string {
   const d = new Date(ts);

@@ -64,7 +64,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </footer>
 
       <CartDrawer />
-      <LeadCaptureModal />
     </div>
   );
 }

@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/auth";
 import { useTheme, COLOR_PROFILES } from "@/lib/theme";
 import { Slider } from "@/components/ui/slider";
 import { useCart } from "@/lib/cart";
+import { LeadCaptureModal } from "./lead-capture-modal";
 
 function getTabs(isAdmin: boolean) {
   return [
@@ -77,6 +78,9 @@ export function GasclubNav() {
               </span>
             )}
           </button>
+
+          {/* Lead modal collapsed icon — rendered by LeadCaptureModal itself */}
+          <LeadCaptureModal />
 
           {/* Settings */}
           <Link

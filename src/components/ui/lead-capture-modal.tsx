@@ -1,16 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Mail, Phone, Sparkles, Copy, Check } from "lucide-react";
+import { X, Mail, Phone, Sparkles, Copy, Check, Gift } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 
 const STORAGE_KEY = "gc247_lead_captured";
-const DELAY_MS = 25000; // 25 seconds after first visit
+const DELAY_MS = 25000;
+
+// Global state to allow navbar icon to toggle modal
+let _setOpenGlobal: ((v: boolean) => void) | null = null;
+export function openLeadModal() { _setOpenGlobal?.(true); }
 
 export function LeadCaptureModal() {
-  const { fg, border, muted, accent, accentFg, accentGlow, isDark, cardBg } = useTheme();
+  const { fg, border, muted, accent, accentFg, accentGlow, isDark } = useTheme();
   const [open, setOpen] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -19,30 +24,28 @@ export function LeadCaptureModal() {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
 
+  // Expose open setter globally for navbar icon
   useEffect(() => {
-    // Don't show if already captured
-    try {
-      if (localStorage.getItem(STORAGE_KEY)) return;
-    } catch {}
+    _setOpenGlobal = setOpen;
+    return () => { _setOpenGlobal = null; };
+  }, []);
 
+  useEffect(() => {
+    try { if (localStorage.getItem(STORAGE_KEY)) { setDismissed(true); return; } } catch {}
     const timer = setTimeout(() => setOpen(true), DELAY_MS);
     return () => clearTimeout(timer);
   }, []);
 
-  const handleDismiss = () => {
+  const handleDismiss = useCallback(() => {
     setOpen(false);
-    // Don't set storage on dismiss — let it show once per session only
-  };
+    setDismissed(true);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email && !phone) {
-      setError("Please enter your email or phone number.");
-      return;
-    }
+    if (!email && !phone) { setError("Please enter your email or phone."); return; }
     setSubmitting(true);
     setError("");
-
     try {
       const res = await fetch("/api/leads", {
         method: "POST",
@@ -53,13 +56,12 @@ export function LeadCaptureModal() {
       if (data.success) {
         setPromoCode(data.promoCode);
         setSuccess(true);
+        setDismissed(true);
         try { localStorage.setItem(STORAGE_KEY, "1"); } catch {}
       } else {
         setError("Something went wrong. Try again.");
       }
-    } catch {
-      setError("Connection error. Try again.");
-    }
+    } catch { setError("Connection error. Try again."); }
     setSubmitting(false);
   };
 
@@ -70,214 +72,188 @@ export function LeadCaptureModal() {
   };
 
   return (
-    <AnimatePresence>
-      {open && (
-        <>
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200]"
-            style={{ background: "rgba(0,0,0,0.75)" }}
-            onClick={handleDismiss}
-          />
-
-          {/* Modal */}
-          <motion.div
-            initial={{ opacity: 0, y: 30, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.96 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 sm:top-1/2 sm:left-1/2 sm:bottom-auto sm:-translate-x-1/2 sm:-translate-y-1/2 z-[201] w-full sm:max-w-sm sm:w-full"
-            style={{ maxWidth: "min(100vw, 400px)", margin: "0 auto" }}
+    <>
+      {/* Navbar collapsed icon — shown when dismissed or submitted */}
+      <AnimatePresence>
+        {dismissed && !open && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            onClick={() => setOpen(true)}
+            className="relative flex items-center justify-center w-7 h-7 rounded-full transition-all active:scale-90"
+            style={{ background: accentGlow, border: `1px solid ${accent}` }}
+            aria-label="Open members club offer"
+            title={success ? "View your promo code" : "Get 20% off your first order"}
           >
-            <div
-              className="relative border w-full"
-              style={{
-                background: isDark ? "#060606" : "#fff",
-                borderColor: border,
-                borderBottom: "none",
-                borderLeft: "none",
-                borderRight: "none",
-              }}
+            <Gift size={13} style={{ color: accent }} />
+            {!success && (
+              <span
+                className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full"
+                style={{ background: accent }}
+              />
+            )}
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* Modal */}
+      <AnimatePresence>
+        {open && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[200]"
+              style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)" }}
+              onClick={handleDismiss}
+            />
+
+            {/* Glass Modal */}
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.97 }}
+              transition={{ type: "spring", damping: 28, stiffness: 320 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[201] w-full"
+              style={{ maxWidth: "min(90vw, 380px)" }}
             >
-              {/* Accent stripe top */}
-              <div className="h-[2px] w-full" style={{ background: accent }} />
-
-              {/* Close */}
-              <button
-                onClick={handleDismiss}
-                className="absolute top-3 right-3 p-1.5 hover:opacity-70 transition-opacity active:scale-90"
-                style={{ color: muted }}
-                aria-label="Close"
+              <div
+                className="relative w-full rounded-xl overflow-hidden"
+                style={{
+                  background: isDark
+                    ? "rgba(8,8,8,0.88)"
+                    : "rgba(255,255,255,0.88)",
+                  backdropFilter: "blur(24px)",
+                  border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
+                  boxShadow: isDark
+                    ? "0 24px 64px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)"
+                    : "0 24px 64px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.8)",
+                }}
               >
-                <X size={14} />
-              </button>
+                {/* Accent top bar */}
+                <div className="h-[2px] w-full" style={{ background: accent }} />
 
-              <div className="p-6 sm:p-7">
-                {!success ? (
-                  <>
-                    {/* Header */}
-                    <div className="flex flex-col items-start gap-1 mb-5">
-                      <div className="flex items-center gap-2">
-                        <Sparkles size={14} style={{ color: accent }} />
-                        <span
-                          className="font-mono text-[9px] tracking-[0.3em] uppercase"
-                          style={{ color: accent }}
+                {/* Close */}
+                <button
+                  onClick={handleDismiss}
+                  className="absolute top-3 right-3 p-1.5 hover:opacity-70 transition-opacity active:scale-90 rounded-full"
+                  style={{ color: muted, background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)" }}
+                  aria-label="Close"
+                >
+                  <X size={13} />
+                </button>
+
+                <div className="p-7">
+                  {!success ? (
+                    <>
+                      {/* Header */}
+                      <div className="flex flex-col items-center gap-2 mb-6 text-center">
+                        <div
+                          className="w-10 h-10 rounded-full flex items-center justify-center mb-1"
+                          style={{ background: accentGlow }}
                         >
+                          <Sparkles size={18} style={{ color: accent }} />
+                        </div>
+                        <span className="font-mono text-[8px] tracking-[0.35em] uppercase" style={{ color: accent }}>
                           MEMBERS CLUB
                         </span>
-                      </div>
-                      <h2
-                        className="font-mono text-sm font-bold tracking-wider mt-1"
-                        style={{ color: fg }}
-                      >
-                        GET 20% OFF YOUR FIRST ORDER
-                      </h2>
-                      <p
-                        className="font-mono text-[10px] tracking-wider leading-relaxed mt-1"
-                        style={{ color: muted }}
-                      >
-                        Join the private club. Get exclusive drops, restock
-                        alerts, and member-only pricing.
-                      </p>
-                    </div>
-
-                    {/* Form */}
-                    <form onSubmit={handleSubmit} className="space-y-3">
-                      <div className="relative">
-                        <Mail
-                          size={12}
-                          className="absolute left-3 top-1/2 -translate-y-1/2"
-                          style={{ color: muted }}
-                        />
-                        <input
-                          type="email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          placeholder="EMAIL ADDRESS"
-                          className="w-full bg-transparent border pl-9 pr-4 py-3 font-mono text-[10px] tracking-[0.15em] outline-none transition-colors"
-                          style={{
-                            borderColor: border,
-                            color: fg,
-                          }}
-                        />
-                      </div>
-
-                      <div className="relative">
-                        <Phone
-                          size={12}
-                          className="absolute left-3 top-1/2 -translate-y-1/2"
-                          style={{ color: muted }}
-                        />
-                        <input
-                          type="tel"
-                          value={phone}
-                          onChange={(e) => setPhone(e.target.value)}
-                          placeholder="PHONE NUMBER (OPTIONAL)"
-                          className="w-full bg-transparent border pl-9 pr-4 py-3 font-mono text-[10px] tracking-[0.15em] outline-none transition-colors"
-                          style={{
-                            borderColor: border,
-                            color: fg,
-                          }}
-                        />
-                      </div>
-
-                      {error && (
-                        <p className="font-mono text-[9px] tracking-wider text-red-400">
-                          {error}
+                        <h2 className="font-mono text-sm font-bold tracking-wider" style={{ color: fg }}>
+                          GET 20% OFF
+                        </h2>
+                        <p className="font-mono text-[10px] tracking-wider leading-relaxed" style={{ color: muted }}>
+                          Join the private club. Exclusive drops &amp; member pricing.
                         </p>
-                      )}
+                      </div>
 
+                      {/* Form */}
+                      <form onSubmit={handleSubmit} className="space-y-2.5">
+                        <div className="relative">
+                          <Mail size={11} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: muted }} />
+                          <input
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="EMAIL ADDRESS"
+                            className="w-full bg-transparent border pl-9 pr-4 py-3 font-mono text-[10px] tracking-[0.15em] outline-none rounded-lg transition-colors"
+                            style={{
+                              borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+                              color: fg,
+                              background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+                            }}
+                          />
+                        </div>
+                        <div className="relative">
+                          <Phone size={11} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: muted }} />
+                          <input
+                            type="tel"
+                            value={phone}
+                            onChange={(e) => setPhone(e.target.value)}
+                            placeholder="PHONE (OPTIONAL)"
+                            className="w-full bg-transparent border pl-9 pr-4 py-3 font-mono text-[10px] tracking-[0.15em] outline-none rounded-lg transition-colors"
+                            style={{
+                              borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+                              color: fg,
+                              background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+                            }}
+                          />
+                        </div>
+                        {error && <p className="font-mono text-[9px] tracking-wider text-red-400">{error}</p>}
+                        <button
+                          type="submit"
+                          disabled={submitting}
+                          className="w-full py-3.5 font-mono text-[10px] tracking-[0.2em] font-bold transition-all active:scale-[0.98] disabled:opacity-50 rounded-lg mt-1"
+                          style={{ background: accent, color: accentFg }}
+                        >
+                          {submitting ? "JOINING..." : "CLAIM 20% OFF →"}
+                        </button>
+                        <p className="font-mono text-[8px] tracking-wider text-center" style={{ color: muted }}>
+                          No spam. Unsubscribe anytime.
+                        </p>
+                      </form>
+                    </>
+                  ) : (
+                    /* Success */
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex flex-col items-center gap-4 py-2 text-center"
+                    >
+                      <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: accentGlow }}>
+                        <Sparkles size={20} style={{ color: accent }} />
+                      </div>
+                      <div>
+                        <h2 className="font-mono text-sm font-bold tracking-wider" style={{ color: fg }}>YOU&apos;RE IN. 🔥</h2>
+                        <p className="font-mono text-[10px] tracking-wider mt-1" style={{ color: muted }}>Your exclusive code:</p>
+                      </div>
                       <button
-                        type="submit"
-                        disabled={submitting}
-                        className="w-full py-3.5 font-mono text-[10px] tracking-[0.2em] font-bold transition-all active:scale-[0.98] disabled:opacity-50"
-                        style={{ background: accent, color: accentFg }}
+                        onClick={copyCode}
+                        className="flex items-center gap-3 border px-5 py-3 transition-all active:scale-95 w-full justify-center rounded-lg"
+                        style={{ borderColor: accent, background: accentGlow }}
                       >
-                        {submitting ? "JOINING..." : "CLAIM 20% OFF →"}
+                        <span className="font-mono text-base font-bold tracking-[0.3em]" style={{ color: accent }}>{promoCode}</span>
+                        {copied ? <Check size={14} style={{ color: accent }} /> : <Copy size={14} style={{ color: muted }} />}
                       </button>
-
-                      <p
-                        className="font-mono text-[8px] tracking-wider text-center"
-                        style={{ color: muted }}
-                      >
-                        No spam. Unsubscribe anytime.
+                      <p className="font-mono text-[9px] tracking-wider" style={{ color: muted }}>
+                        {copied ? "COPIED!" : "TAP TO COPY"} · 20% off your first order
                       </p>
-                    </form>
-                  </>
-                ) : (
-                  /* Success State */
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex flex-col items-center gap-4 py-2 text-center"
-                  >
-                    <div
-                      className="w-12 h-12 rounded-full flex items-center justify-center"
-                      style={{ background: accentGlow }}
-                    >
-                      <Sparkles size={20} style={{ color: accent }} />
-                    </div>
-                    <div>
-                      <h2
-                        className="font-mono text-sm font-bold tracking-wider"
-                        style={{ color: fg }}
+                      <button
+                        onClick={() => setOpen(false)}
+                        className="w-full py-3 font-mono text-[10px] tracking-[0.2em] border transition-all active:scale-[0.98] rounded-lg"
+                        style={{ borderColor: border, color: fg }}
                       >
-                        YOU&apos;RE IN. 🔥
-                      </h2>
-                      <p
-                        className="font-mono text-[10px] tracking-wider mt-1"
-                        style={{ color: muted }}
-                      >
-                        Your exclusive code:
-                      </p>
-                    </div>
-
-                    {/* Promo Code Display */}
-                    <button
-                      onClick={copyCode}
-                      className="flex items-center gap-3 border px-5 py-3 transition-all active:scale-95 w-full justify-center"
-                      style={{
-                        borderColor: accent,
-                        background: accentGlow,
-                      }}
-                    >
-                      <span
-                        className="font-mono text-base font-bold tracking-[0.3em]"
-                        style={{ color: accent }}
-                      >
-                        {promoCode}
-                      </span>
-                      {copied ? (
-                        <Check size={14} style={{ color: accent }} />
-                      ) : (
-                        <Copy size={14} style={{ color: muted }} />
-                      )}
-                    </button>
-
-                    <p
-                      className="font-mono text-[9px] tracking-wider"
-                      style={{ color: muted }}
-                    >
-                      {copied ? "COPIED!" : "TAP TO COPY"} · 20% off your first order
-                    </p>
-
-                    <button
-                      onClick={() => setOpen(false)}
-                      className="w-full py-3 font-mono text-[10px] tracking-[0.2em] border transition-all active:scale-[0.98]"
-                      style={{ borderColor: border, color: fg }}
-                    >
-                      SHOP NOW →
-                    </button>
-                  </motion.div>
-                )}
+                        SHOP NOW →
+                      </button>
+                    </motion.div>
+                  )}
+                </div>
               </div>
-            </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </>
   );
 }

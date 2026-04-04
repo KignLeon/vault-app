@@ -242,7 +242,15 @@ export async function createPromoCode(data: {
 
 export async function updatePromoCode(
   id: string,
-  updates: { active?: boolean; discount_pct?: number }
+  updates: {
+    active?: boolean;
+    discount_pct?: number;
+    code?: string;
+    max_uses?: number | null;
+    expires_at?: string | null;
+    min_order_amount?: number | null;
+    one_time?: boolean;
+  }
 ): Promise<{ success: boolean; error?: string }> {
   const { error } = await (supabase as any)
     .from("promo_codes")

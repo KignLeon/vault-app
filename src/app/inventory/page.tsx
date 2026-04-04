@@ -30,12 +30,12 @@ export default function InventoryPage() {
     });
   }, []);
 
-  const filtered = useMemo(() =>
-    activeCategory === "all"
-      ? allProducts
-      : allProducts.filter((p) => p.category === activeCategory),
-    [activeCategory, allProducts]
-  );
+  const filtered = useMemo(() => {
+    const visible = allProducts.filter(p => !p.tags?.includes("hidden"));
+    return activeCategory === "all"
+      ? visible
+      : visible.filter((p) => p.category === activeCategory);
+  }, [activeCategory, allProducts]);
 
   const openProduct = (product: NormalizedProduct) => {
     setSelectedProduct(product);

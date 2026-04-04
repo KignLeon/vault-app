@@ -121,11 +121,25 @@ export async function fetchProductById(id: string): Promise<NormalizedProduct | 
 // ── Update product (admin only) ────────────────────────────────────────────────
 export async function updateProduct(
   id: string,
-  updates: { price?: number; stock?: number; status?: string; image_url?: string }
+  updates: {
+    price?: number;
+    stock?: number;
+    status?: string;
+    image_url?: string;
+    name?: string;
+    description?: string;
+    category?: string;
+    tags?: string[];
+    featured?: boolean;
+  }
 ): Promise<{ success: boolean; error?: string }> {
+  // Convert tags array to JSON if present
+  const dbUpdates: Record<string, any> = { ...updates };
+  if (dbUpdates.tags) dbUpdates.tags = JSON.stringify(dbUpdates.tags);
+
   const { error } = await (supabase as any)
     .from("products")
-    .update(updates)
+    .update(dbUpdates)
     .eq("id", id);
 
   if (error) return { success: false, error: error.message };

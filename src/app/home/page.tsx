@@ -12,7 +12,7 @@ import {
   fetchPosts, getLocalPosts, deletePost,
   type DbPost,
 } from "@/lib/community";
-import { GasclubFooterLogo } from "@/components/ui/gasclub-logo";
+
 import {
   Pin, Trash2, Megaphone, Package, Image, Star, Tag, RefreshCw, CheckCircle, Hash,
 } from "lucide-react";
@@ -50,12 +50,20 @@ export default function HomePage() {
 
   // Background sync from Supabase (local data already rendered)
   useEffect(() => {
-    fetchPosts().then(d => { if (d.length > 0) setPosts(d); });
+    fetchPosts().then(d => {
+      // Filter out hidden posts for the public feed
+      const visible = d.filter((p: any) => !p.hidden);
+      if (visible.length > 0) setPosts(visible);
+    });
   }, []);
 
   const refresh = () => {
     setLoading(true);
-    fetchPosts().then(d => { setPosts(d); setLoading(false); });
+    fetchPosts().then(d => {
+      const visible = d.filter((p: any) => !p.hidden);
+      setPosts(visible);
+      setLoading(false);
+    });
   };
 
   const handleDeletePost = async (postId: string) => {
@@ -221,8 +229,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* ── Branded Footer ── */}
-      <SiteFooter isDark={isDark} />
+
     </AppShell>
   );
 }
@@ -286,57 +293,7 @@ function BrandPost() {
   );
 }
 
-// ── Site Footer ─────────────────────────────────────────────────────────────────
-function SiteFooter({ isDark }: { isDark: boolean }) {
-  return (
-    <footer
-      className="mt-20 -mx-4 sm:-mx-6 lg:-mx-8 px-6 py-12"
-      style={{ background: "#000", borderTop: "1px solid rgba(255,255,255,0.08)" }}
-    >
-      <div className="max-w-2xl mx-auto flex flex-col items-center gap-8">
 
-        {/* Logos — GC247 × Lovoson */}
-        <div className="flex items-center gap-5">
-          {/* GASCLUB247 — always white/inverted on black */}
-          <GasclubFooterLogo isDark={true} />
-
-          <span className="font-mono text-[11px]" style={{ color: "rgba(255,255,255,0.3)" }}>×</span>
-
-          {/* Lovoson icon */}
-          <a
-            href="https://lovoson.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="opacity-70 hover:opacity-100 transition-opacity"
-            aria-label="Lovoson"
-          >
-            <img
-              src="/lovoson-icon.svg"
-              alt="Lovoson"
-              style={{ height: 32, width: "auto", filter: "invert(1)" }}
-            />
-          </a>
-        </div>
-
-        {/* Credit line */}
-        <a
-          href="https://lovoson.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-mono text-[9px] tracking-[0.25em] hover:opacity-100 transition-opacity"
-          style={{ color: "rgba(255,255,255,0.35)", letterSpacing: "0.25em" }}
-        >
-          DESIGNED BY LOVOSON
-        </a>
-
-        {/* Legal */}
-        <p className="font-mono text-[8px] tracking-wider text-center" style={{ color: "rgba(255,255,255,0.18)" }}>
-          © {new Date().getFullYear()} GASCLUB247. PRIVATE PLATFORM. ALL RIGHTS RESERVED.
-        </p>
-      </div>
-    </footer>
-  );
-}
 
 // ── Post Card ──────────────────────────────────────────────────────────────────
 function PostCard({

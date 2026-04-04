@@ -6,8 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { GasclubNavLogo } from "./gasclub-logo";
 import { cn } from "@/lib/utils";
-import { Home, Package, ShoppingCart, Shield, Ticket, Sun, Moon, ShoppingBag, Settings, LogOut, Check, Palette, X } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "./avatar";
+import { Home, Package, ShoppingCart, Shield, Ticket, Sun, Moon, ShoppingBag, LogOut, Check, Palette, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useTheme, COLOR_PROFILES } from "@/lib/theme";
 import { Slider } from "@/components/ui/slider";
@@ -31,7 +30,6 @@ export function GasclubNav() {
   const { brightness, setBrightness, isDark, fg, border, bg, muted, accent, accentMuted, accentGlow, accentFg, colorProfile, setColorProfile } = useTheme();
   const { itemCount, setCartOpen } = useCart();
   const [showPanel, setShowPanel] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false);
   const tabs = getTabs(isAdmin);
 
   return (
@@ -79,71 +77,19 @@ export function GasclubNav() {
             )}
           </button>
 
-          {/* Lead modal collapsed icon — rendered by LeadCaptureModal itself */}
+          {/* Lead modal collapsed icon */}
           <LeadCaptureModal />
 
-          {/* Settings */}
-          <Link
-            href="/settings"
-            className="p-2 rounded-full transition-all active:scale-90 nav-action-btn"
-            style={{ color: fg }}
-            aria-label="Settings"
-          >
-            <Settings size={15} />
-          </Link>
-
-          {/* User Avatar / Menu */}
-          {user && (
-            <div className="relative">
-              <button
-                onClick={() => setShowUserMenu(!showUserMenu)}
-                className="active:scale-90 transition-transform"
-              >
-                <Avatar className="h-7 w-7 border" style={{ borderColor: border }}>
-                  <AvatarImage src={user.avatar} alt={user.displayName || user.username} />
-                  <AvatarFallback className="text-[8px]">
-                    {(user.displayName || user.username)[0]?.toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-              </button>
-
-              {/* Dropdown */}
-              {showUserMenu && (
-                <>
-                  <div className="fixed inset-0 z-[98]" onClick={() => setShowUserMenu(false)} />
-                  <motion.div
-                    initial={{ opacity: 0, y: -5, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    className="absolute right-0 top-10 z-[99] w-48 border p-2 space-y-1"
-                    style={{ background: isDark ? "#0a0a0a" : "#fff", borderColor: border }}
-                  >
-                    <div className="px-3 py-2" style={{ borderBottom: `1px solid ${border}` }}>
-                      <p className="font-mono text-[10px] font-bold tracking-wider truncate" style={{ color: fg }}>
-                        @{user.username}
-                      </p>
-                      <p className="font-mono text-[8px] tracking-wider uppercase" style={{ color: fg, opacity: 0.4 }}>
-                        {user.role.replace("_", " ")}
-                      </p>
-                    </div>
-                    <Link
-                      href="/settings"
-                      onClick={() => setShowUserMenu(false)}
-                      className="flex items-center gap-2 px-3 py-2 font-mono text-[10px] tracking-wider transition-colors hover:bg-white/5"
-                      style={{ color: fg }}
-                    >
-                      <Settings size={12} /> SETTINGS
-                    </Link>
-                    <button
-                      onClick={() => { logout(); setShowUserMenu(false); }}
-                      className="w-full flex items-center gap-2 px-3 py-2 font-mono text-[10px] tracking-wider transition-colors hover:bg-white/5 text-left"
-                      style={{ color: fg }}
-                    >
-                      <LogOut size={12} /> SIGN OUT
-                    </button>
-                  </motion.div>
-                </>
-              )}
-            </div>
+          {/* Admin logout — only for admins */}
+          {isAdmin && (
+            <button
+              onClick={() => logout()}
+              className="p-2 rounded-full transition-all active:scale-90 nav-action-btn"
+              style={{ color: fg }}
+              aria-label="Sign out"
+            >
+              <LogOut size={15} />
+            </button>
           )}
         </div>
       </nav>

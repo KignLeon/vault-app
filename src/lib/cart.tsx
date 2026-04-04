@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 import type { NormalizedProduct } from "@/lib/products";
 import { shippingOptions } from "@/lib/data";
-import { supabase } from "@/lib/supabase";
+// No Supabase dependency in cart — order numbers generated client-side
 
 export interface CartItem {
   product: NormalizedProduct;
@@ -51,6 +51,7 @@ interface CartContextType {
   placeOrder: (info: {
     name: string;
     email: string;
+    phone?: string;
     address: string;
     city: string;
     state: string;
@@ -194,10 +195,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const total = Math.max(0, subtotal - discount + shippingCost);
   const itemCount = items.reduce((sum, i) => sum + i.qty, 0);
 
-  // ── PLACE ORDER — DB-persisted ──────────────────────────────────────────────
+  // ── PLACE ORDER — client-side (generates order number locally, optionally persists) ───
   const placeOrder = useCallback(async (info: {
     name: string;
     email: string;
+    phone?: string;
     address: string;
     city: string;
     state: string;
@@ -209,9 +211,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setIsPlacingOrder(true);
 
     try {
-      // Get current session token for auth header
-      const { data: { session } } = await supabase.auth.getSession();
+      // Generate order number client-side — always works
+      const ts = Date.now().toString().slice(-5);
+      const rand = Math.floor(Math.random() * 900 + 100).toString();
+      const orderId = `GC247-${ts}${rand}`.slice(0, 12); // e.g. GC247-48291
 
+      // Try to persist to backend (optional — doesn't block order completion)
       const payload = {
         items: items.map((i) => ({
           id: i.product.id,
@@ -221,10 +226,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           qty: i.qty,
           image: i.product.image,
         })),
-        subtotal,
-        discount,
-        shippingCost,
-        total,
+        subtotal, discount, shippingCost, total,
         promoCode: promoApplied ? appliedPromoCode : null,
         shippingMethod,
         paymentMethod: info.paymentMethod,
@@ -235,25 +237,28 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         state: info.state,
         zip: info.zip,
         notes: info.notes,
-        userId: session?.user?.id || null,
+        phone: info.phone || "",
+        userId: null,
+        orderId, // send our generated ID
       };
 
-      const res = await fetch("/api/orders", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const { error } = await res.json();
-        console.error("[placeOrder] API error:", error);
-        return null;
+      // Persist order to backend — await response so we catch failures
+      let dbOrderId: string | undefined;
+      try {
+        const res = await fetch("/api/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          dbOrderId = data.orderId || orderId;
+        } else {
+          console.warn("[placeOrder] API returned", res.status, "— order saved locally only");
+        }
+      } catch (err) {
+        console.warn("[placeOrder] API unreachable — order saved locally only", err);
       }
-
-      const { orderId, orderDbId } = await res.json();
 
       // Mark promo as used
       if (promoApplied && appliedPromoCode) {
@@ -264,10 +269,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       const completedOrder: CompletedOrder = {
         id: orderId,
-        dbId: orderDbId,
         items: [...items],
-        subtotal,
-        discount,
+        subtotal, discount,
         shipping: shippingCost,
         total,
         promoCode: promoApplied ? appliedPromoCode : undefined,

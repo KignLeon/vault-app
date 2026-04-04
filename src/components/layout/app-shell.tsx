@@ -8,7 +8,7 @@ import { LeadCaptureModal } from "@/components/ui/lead-capture-modal";
 import { useTheme } from "@/lib/theme";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { muted, border, isDark, brightness, fg } = useTheme();
+  const { isDark } = useTheme();
   return (
     <div className="min-h-[100dvh] transition-colors duration-300">
       <GasclubNav />
@@ -23,42 +23,45 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      {/* Premium Footer */}
+      {/* Premium Branded Footer — GC247 × Lovoson Media */}
       <footer
-        className="w-full pb-20 md:pb-8 pt-8"
-        style={{ borderTop: `1px solid ${border}` }}
+        className="w-full pb-24 md:pb-12 pt-12"
+        style={{ background: isDark ? "#000" : "#0a0a0a", borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}` }}
       >
-        <div className="flex flex-col items-center gap-4 px-4">
-          {/* Logo */}
-          <GasclubFooterLogo isDark={isDark} brightness={brightness} />
+        <div className="max-w-2xl mx-auto flex flex-col items-center gap-8 px-4">
+          {/* Logos — GC247 × Lovoson */}
+          <div className="flex items-center gap-5">
+            <GasclubFooterLogo isDark={true} />
+            <span className="font-mono text-[11px]" style={{ color: "rgba(255,255,255,0.3)" }}>×</span>
+            <a
+              href="https://lovoson.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="opacity-70 hover:opacity-100 transition-opacity"
+              aria-label="Lovoson"
+            >
+              <img
+                src="/lovoson-icon.svg"
+                alt="Lovoson"
+                style={{ height: 32, width: "auto", filter: "invert(1)" }}
+              />
+            </a>
+          </div>
 
-          {/* Divider */}
-          <div
-            className="w-16 h-px"
-            style={{
-              background: border,
-              maskImage: "linear-gradient(to right, transparent, black, transparent)",
-              WebkitMaskImage: "linear-gradient(to right, transparent, black, transparent)",
-            }}
-          />
-
-          {/* Designed by */}
+          {/* Credit line */}
           <a
             href="https://lovoson.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="font-mono text-[9px] tracking-[0.2em] uppercase transition-opacity hover:opacity-80"
-            style={{ color: muted, opacity: 0.6 }}
+            className="font-mono text-[9px] tracking-[0.25em] hover:opacity-100 transition-opacity"
+            style={{ color: "rgba(255,255,255,0.35)" }}
           >
-            Designed by Lovoson Media
+            DESIGNED BY LOVOSON MEDIA
           </a>
 
-          {/* Copyright */}
-          <p
-            className="font-mono text-[8px] tracking-[0.15em] uppercase"
-            style={{ color: muted, opacity: 0.3 }}
-          >
-            © {new Date().getFullYear()} GASCLUB247 · ALL RIGHTS RESERVED
+          {/* Legal */}
+          <p className="font-mono text-[8px] tracking-wider text-center" style={{ color: "rgba(255,255,255,0.18)" }}>
+            © {new Date().getFullYear()} GASCLUB247. PRIVATE PLATFORM. ALL RIGHTS RESERVED.
           </p>
         </div>
       </footer>

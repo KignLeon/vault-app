@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     // Validate required fields
-    const { items, subtotal, discount, shippingCost, total, promoCode, shippingMethod, paymentMethod, name, email, address, city, state, zip, notes, userId } = body;
+    const { items, subtotal, discount, shippingCost, total, promoCode, shippingMethod, paymentMethod, name, email, phone, address, city, state, zip, notes, userId, orderId } = body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
         shipping_method: shippingMethod || "standard",
         payment_method: paymentMethod || "crypto",
         status: "pending",
-        notes: notes || null,
+        notes: phone ? `Phone: ${phone}${notes ? ' | ' + notes : ''}` : (notes || null),
         address: address || null,
         city: city || null,
         state: state || null,
@@ -126,14 +126,37 @@ export async function GET(request: NextRequest) {
 }
 
 
-// ── PATCH /api/orders — Update order status (admin) ───────────────────────────
+// ── PATCH /api/orders — Update order status (admin only) ──────────────────────
 export async function PATCH(request: NextRequest) {
+  // Require valid admin Bearer token
+  const authHeader = request.headers.get("authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const token = authHeader.slice(7);
+  const admin = getAdminClient();
+
+  const { data: { user }, error: authError } = await admin.auth.getUser(token);
+  if (authError || !user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile || !["admin", "super_admin"].includes(profile.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const body = await request.json();
   const { orderId, status, trackingNumber } = body;
 
   if (!orderId) return NextResponse.json({ error: "orderId required" }, { status: 400 });
 
-  const admin = getAdminClient();
   const { error } = await admin
     .from("orders")
     .update({
@@ -146,6 +169,7 @@ export async function PATCH(request: NextRequest) {
 
   return NextResponse.json({ success: true });
 }
+
 
 // ── Telegram Notification ─────────────────────────────────────────────────────
 async function sendTelegramNotification(order: {

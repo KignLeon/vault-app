@@ -7,7 +7,7 @@ import { useCart } from "@/lib/cart";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import { shippingOptions } from "@/lib/data";
-import { Check, ChevronLeft, Lock, Shield, CreditCard, Wallet, Sparkles, Package, Truck } from "lucide-react";
+import { Check, ChevronLeft, Lock, Shield, CreditCard, Wallet, Sparkles, Package, Truck, Copy, MessageCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -25,10 +25,13 @@ export default function CheckoutPage() {
   const router = useRouter();
   const [placedOrder, setPlacedOrder] = useState<ReturnType<typeof placeOrder> extends Promise<infer T> ? T : never | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [copiedOrder, setCopiedOrder] = useState(false);
+  const [formError, setFormError] = useState("");
 
   // Form state
   const [name, setName] = useState(user?.displayName || "");
   const [email, setEmail] = useState(user?.email?.includes("@gasclub247.app") ? "" : (user?.email || ""));
+  const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
@@ -37,11 +40,16 @@ export default function CheckoutPage() {
   const [payMethod, setPayMethod] = useState<PaymentMethod>("crypto");
 
   const handlePlaceOrder = async () => {
+    // P0-6: Form validation
+    if (!name.trim()) { setFormError("Name is required."); return; }
+    if (!email.trim() || !/\S+@\S+\.\S+/.test(email)) { setFormError("Valid email is required."); return; }
+    setFormError("");
     setProcessing(true);
     try {
       const order = await placeOrder({
         name,
         email,
+        phone,
         address,
         city,
         state,
@@ -84,8 +92,8 @@ export default function CheckoutPage() {
   if (placedOrder) {
     return (
       <AppShell>
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center gap-8 pt-12 pb-8 px-4">
-          {/* Success Animation */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center gap-6 pt-10 pb-12 px-4 max-w-lg mx-auto">
+          {/* Success check */}
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
@@ -95,7 +103,6 @@ export default function CheckoutPage() {
             <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: accent }}>
               <Check size={28} style={{ color: accentFg }} />
             </div>
-            {/* Glow ring */}
             <motion.div
               initial={{ scale: 0.8, opacity: 1 }}
               animate={{ scale: 2, opacity: 0 }}
@@ -105,56 +112,131 @@ export default function CheckoutPage() {
             />
           </motion.div>
 
-          <div className="text-center space-y-2">
-            <h1 className="font-mono text-sm tracking-[0.3em] font-bold" style={{ color: fg }}>ORDER CONFIRMED</h1>
+          <div className="text-center space-y-1">
+            <h1 className="font-mono text-sm tracking-[0.3em] font-bold" style={{ color: fg }}>ORDER CONFIRMED ✓</h1>
             <p className="font-mono text-[10px] tracking-wider" style={{ color: muted }}>Your order has been placed successfully</p>
           </div>
 
-          {/* Order Number — Premium Display */}
+          {/* ORDER NUMBER — BIG + COPY BUTTON */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="text-center border p-6 w-full max-w-sm"
-            style={{ borderColor: accent, background: accentGlow }}
+            className="w-full"
           >
-            <p className="font-mono text-[9px] tracking-[0.2em]" style={{ color: muted }}>ORDER NUMBER</p>
-            <p className="font-mono text-2xl font-bold tracking-wider mt-1" style={{ color: fg }}>{placedOrder.id}</p>
-            <p className="font-mono text-[8px] tracking-wider mt-2" style={{ color: muted }}>Save this — you&apos;ll need it for payment</p>
+            <p className="font-mono text-[9px] tracking-[0.3em] uppercase text-center mb-2" style={{ color: muted }}>Your Order Number</p>
+            <div className="flex items-center gap-2 border-2 p-4" style={{ borderColor: accent, background: accentGlow }}>
+              <span className="font-mono text-2xl font-black tracking-widest flex-1 text-center" style={{ color: accent }}>
+                {placedOrder.id}
+              </span>
+              <button
+                onClick={() => {
+                  try { navigator.clipboard.writeText(placedOrder.id); } catch {}
+                  setCopiedOrder(true);
+                  setTimeout(() => setCopiedOrder(false), 2500);
+                }}
+                className="flex items-center gap-1.5 px-3 py-2 border font-mono text-[9px] tracking-[0.15em] transition-all active:scale-95"
+                style={{ borderColor: accent, color: copiedOrder ? accent : muted, background: copiedOrder ? accentGlow : "transparent" }}
+              >
+                {copiedOrder ? <Check size={12} /> : <Copy size={12} />}
+                {copiedOrder ? "COPIED!" : "COPY"}
+              </button>
+            </div>
+            <p className="font-mono text-[8px] tracking-[0.15em] mt-2 text-center uppercase" style={{ color: muted }}>You MUST include this with your payment</p>
           </motion.div>
 
-          {/* Order Items */}
-          <div className="w-full max-w-sm space-y-3" style={{ borderTop: `1px solid ${border}`, paddingTop: "1rem" }}>
+          {/* PAYMENT INSTRUCTIONS — CLEAR 4 STEPS */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="w-full border p-6 space-y-5"
+            style={{ borderColor: border }}
+          >
+            <p className="font-mono text-[10px] tracking-[0.3em] font-bold text-center" style={{ color: fg }}>HOW TO COMPLETE YOUR ORDER</p>
+
+            {/* Step 1 */}
+            <div className="flex gap-3 items-start">
+              <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center font-mono text-[10px] font-bold" style={{ background: accent, color: accentFg }}>1</div>
+              <div>
+                <p className="font-mono text-xs font-bold" style={{ color: fg }}>Copy your order number</p>
+                <p className="font-mono text-[10px] mt-0.5" style={{ color: muted }}>Use the COPY button above ↑</p>
+              </div>
+            </div>
+
+            {/* Step 2 — TEXT ORDER button */}
+            <div className="flex gap-3 items-start">
+              <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center font-mono text-[10px] font-bold" style={{ background: accent, color: accentFg }}>2</div>
+              <div className="flex-1">
+                <p className="font-mono text-xs font-bold" style={{ color: fg }}>Tap TEXT ORDER to open your messages</p>
+                <p className="font-mono text-[10px] mt-1" style={{ color: muted }}>The message is pre-filled — just hit send</p>
+                <a
+                  href={`sms:+13109940642?body=Order: ${placedOrder.id}%0APayment Option:%0A1 - Zelle%0A2 - Crypto`}
+                  className="mt-3 flex items-center justify-center gap-2 py-3.5 font-mono text-[11px] tracking-[0.2em] font-bold transition-all active:scale-[0.98] w-full"
+                  style={{ background: accent, color: accentFg }}
+                >
+                  <MessageCircle size={15} />
+                  TEXT ORDER
+                </a>
+                <p className="font-mono text-[8px] tracking-wider text-center mt-1.5" style={{ color: muted }}>Opens SMS · +1 (310) 994-0642</p>
+              </div>
+            </div>
+
+            {/* Step 3 */}
+            <div className="flex gap-3 items-start">
+              <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center font-mono text-[10px] font-bold" style={{ background: accent, color: accentFg }}>3</div>
+              <div>
+                <p className="font-mono text-xs font-bold" style={{ color: fg }}>Send the message</p>
+                <p className="font-mono text-[10px] mt-0.5" style={{ color: muted }}>Confirm: Zelle or Crypto? We&rsquo;ll reply fast.</p>
+              </div>
+            </div>
+
+            {/* Step 4 */}
+            <div className="flex gap-3 items-start">
+              <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center font-mono text-[10px] font-bold" style={{ background: accent, color: accentFg }}>4</div>
+              <div>
+                <p className="font-mono text-xs font-bold" style={{ color: fg }}>Complete payment after reply</p>
+                <div className="mt-2 space-y-1.5">
+                  <div className="border p-2.5" style={{ borderColor: border }}>
+                    <p className="font-mono text-[10px] font-bold" style={{ color: fg }}>ZELLE → send to <span style={{ color: accent }}>3109940642</span></p>
+                    <p className="font-mono text-[9px] mt-0.5" style={{ color: muted }}>Include order # in memo</p>
+                  </div>
+                  <div className="border p-2.5" style={{ borderColor: border }}>
+                    <p className="font-mono text-[10px] font-bold" style={{ color: fg }}>CRYPTO → BTC · ETH · USDT</p>
+                    <p className="font-mono text-[9px] mt-0.5" style={{ color: muted }}>Wallet address sent after you text us</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Order summary */}
+          <div className="w-full border p-4 space-y-2" style={{ borderColor: border }}>
+            <p className="font-mono text-[9px] tracking-[0.2em]" style={{ color: muted }}>ORDER SUMMARY</p>
             {placedOrder.items.map((i) => (
               <div key={i.product.id} className="flex justify-between font-mono text-[10px] tracking-wider" style={{ color: fg }}>
                 <span>{i.product.name} × {i.qty}</span>
                 <span>${(i.product.price * i.qty).toFixed(2)}</span>
               </div>
             ))}
-            <div className="pt-3 space-y-1" style={{ borderTop: `1px solid ${border}` }}>
+            <div className="pt-2 mt-2" style={{ borderTop: `1px solid ${border}` }}>
               {placedOrder.discount > 0 && (
-                <div className="flex justify-between font-mono text-[10px] tracking-wider" style={{ color: "rgb(34,197,94)" }}>
+                <div className="flex justify-between font-mono text-[10px]" style={{ color: "rgb(34,197,94)" }}>
                   <span>PROMO</span><span>-${placedOrder.discount.toFixed(2)}</span>
                 </div>
               )}
-              <div className="flex justify-between font-mono text-[10px] tracking-wider" style={{ color: muted }}>
+              <div className="flex justify-between font-mono text-[10px]" style={{ color: muted }}>
                 <span>SHIPPING</span><span>${placedOrder.shipping.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between font-mono text-base tracking-wider font-bold pt-3" style={{ color: fg, borderTop: `1px solid ${border}` }}>
-                <span>TOTAL</span><span>${placedOrder.total.toFixed(2)}</span>
+              <div className="flex justify-between font-mono text-sm font-bold pt-2" style={{ color: fg }}>
+                <span>TOTAL DUE</span><span>${placedOrder.total.toFixed(2)}</span>
               </div>
             </div>
           </div>
 
-          {/* Next Steps */}
-          <div className="w-full max-w-sm space-y-2">
-            <Link href={`/instructions?order=${placedOrder.id}`} className="block w-full text-center font-mono text-[10px] tracking-[0.2em] py-3.5 active:scale-[0.98] transition-transform" style={{ background: accent, color: accentFg }}>
-              PAYMENT INSTRUCTIONS →
-            </Link>
-            <Link href="/inventory" className="block w-full text-center font-mono text-[10px] tracking-[0.2em] py-3.5 border active:scale-[0.98] transition-transform" style={{ borderColor: border, color: fg }}>
-              CONTINUE SHOPPING
-            </Link>
-          </div>
+          <Link href="/inventory" className="w-full text-center font-mono text-[10px] tracking-[0.2em] py-3.5 border active:scale-[0.98] transition-transform block" style={{ borderColor: border, color: fg }}>
+            CONTINUE SHOPPING
+          </Link>
         </motion.div>
       </AppShell>
     );
@@ -188,6 +270,7 @@ export default function CheckoutPage() {
               <div className="space-y-3">
                 <input value={name} onChange={(e) => setName(e.target.value)} placeholder="FULL NAME" className={inputCls} style={{ borderColor: border, color: fg }} />
                 <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="EMAIL" type="email" className={inputCls} style={{ borderColor: border, color: fg }} />
+                <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="PHONE NUMBER" type="tel" className={inputCls} style={{ borderColor: border, color: fg }} />
               </div>
             </section>
 
@@ -382,6 +465,9 @@ export default function CheckoutPage() {
             <span className="font-mono text-[10px] tracking-wider" style={{ color: muted }}>{items.length} ITEM{items.length > 1 ? "S" : ""}</span>
             <span className="font-mono text-sm font-bold tracking-wider" style={{ color: fg }}>${total.toFixed(2)}</span>
           </div>
+          {formError && (
+            <p className="font-mono text-[10px] tracking-wider text-red-400 text-center mb-2">{formError}</p>
+          )}
           <button
             onClick={handlePlaceOrder}
             disabled={processing}

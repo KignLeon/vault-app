@@ -611,18 +611,18 @@ export const shippingOptions = [
 export const posts: Post[] = [
   {
     id: "post1", type: "drop", pinned: true,
-    title: "PLATINUM LEMON CHERRY — NOW LIVE",
-    content: "Premium indoor flower loaded into inventory. Bold cherry-forward profile with top-shelf bag appeal. Members-first access, limited quantities.",
+    title: "GASCLUB247 IS LIVE",
+    content: "The club is open. Private access only — share the code with people who deserve it. Premium drops, exclusive pricing, direct access. Welcome.",
     author: "GASCLUB247", authorAvatar: "https://randomuser.me/api/portraits/men/32.jpg",
-    timestamp: "2026-03-24T14:00:00Z",
-    image: productCardUrl("IMG_2506_iyhfil"),
+    timestamp: "2026-04-03T14:00:00Z",
+    image: "/gasclub247-live-post.png",
   },
   {
-    id: "post2", type: "promo", pinned: true,
-    title: "⚡ WEEKEND PROMO ACTIVE",
-    content: "Use code PROMO1 for 25% off your first order. One-time use per account. Valid this weekend only.",
+    id: "post2", type: "promo", pinned: false,
+    title: "⚡ MEMBER WELCOME OFFER",
+    content: "New members get exclusive pricing on your first order. Text us your order number after checkout to confirm your deal.",
     author: "GASCLUB247", authorAvatar: "https://randomuser.me/api/portraits/men/32.jpg",
-    timestamp: "2026-03-24T12:00:00Z",
+    timestamp: "2026-04-03T12:00:00Z",
     image: productCardUrl("IMG_2260_jaakqk"),
   },
   {

@@ -6,7 +6,7 @@ import { X, Mail, Phone, Sparkles, Copy, Check, Gift } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 
 const STORAGE_KEY = "gc247_lead_captured";
-const DELAY_MS = 25000;
+const DELAY_MS = 0; // triggers immediately after mount
 
 // Global state to allow navbar icon to toggle modal
 let _setOpenGlobal: ((v: boolean) => void) | null = null;
@@ -111,14 +111,18 @@ export function LeadCaptureModal() {
               onClick={handleDismiss}
             />
 
-            {/* Glass Modal */}
+            {/* Glass Modal — centering wrapper keeps position stable while inner animates */}
+            <div
+              className="fixed inset-0 z-[201] flex items-center justify-center"
+              style={{ pointerEvents: "none", padding: "24px 16px", minHeight: "100dvh" }}
+            >
             <motion.div
               initial={{ opacity: 0, y: 20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.97 }}
               transition={{ type: "spring", damping: 28, stiffness: 320 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[201] w-full"
-              style={{ maxWidth: "min(90vw, 380px)" }}
+              className="w-full"
+              style={{ maxWidth: "min(90vw, 380px)", pointerEvents: "auto" }}
             >
               <div
                 className="relative w-full rounded-xl overflow-hidden"
@@ -251,6 +255,7 @@ export function LeadCaptureModal() {
                 </div>
               </div>
             </motion.div>
+            </div>
           </>
         )}
       </AnimatePresence>

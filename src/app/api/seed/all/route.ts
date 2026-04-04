@@ -1,11 +1,32 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { products as localProducts } from "@/lib/data";
 
-// POST /api/seed/all — Seed everything: products + posts + comments
-export async function POST() {
+// Helper: verify admin Bearer token
+async function verifyAdmin(req: NextRequest): Promise<boolean> {
+  const authHeader = req.headers.get("authorization");
+  if (!authHeader?.startsWith("Bearer ")) return false;
+  const token = authHeader.slice(7);
+  const admin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+  const { data: { user }, error } = await admin.auth.getUser(token);
+  if (error || !user) return false;
+  const { data: profile } = await admin.from("profiles").select("role").eq("id", user.id).single();
+  return !!profile && ["admin", "super_admin"].includes(profile.role);
+}
+
+// POST /api/seed/all — Seed everything: products + posts + comments (admin only)
+export async function POST(req: NextRequest) {
+  if (!(await verifyAdmin(req))) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
 
   if (!serviceKey || !supabaseUrl) {
     return NextResponse.json({ error: "Missing Supabase credentials" }, { status: 500 });

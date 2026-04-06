@@ -136,7 +136,8 @@ export default function InventoryPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4"
+            className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-4"
+            style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}
             onClick={() => setSelectedProduct(null)}
           >
             <motion.div
@@ -145,8 +146,8 @@ export default function InventoryPage() {
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full md:max-w-lg max-h-[92dvh] overflow-y-auto rounded-t-2xl md:rounded-none"
-              style={{ background: isDark ? "#0a0a0a" : "#fff" }}
+              className="w-full md:max-w-lg max-h-[92dvh] overflow-y-auto rounded-t-2xl md:rounded-none overscroll-contain"
+              style={{ background: isDark ? "#0a0a0a" : "#fff", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
             >
               {/* Drag handle */}
               <div className="flex justify-center py-2 md:hidden">

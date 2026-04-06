@@ -1,6 +1,8 @@
 -- ================================================
 -- GASCLUB247 — Supabase Migration 002
 -- Row-Level Security (RLS) Policies
+-- PUBLIC SITE — no user auth required for reading
+-- Admin operations still require authenticated admin
 -- ================================================
 
 -- ── PROFILES RLS ──────────────────────────────────────────────────────
@@ -11,15 +13,21 @@ create policy "Profiles are publicly readable"
   on public.profiles for select
   using (true);
 
--- Users can only update their own profile
-create policy "Users can update own profile"
+-- Admins can update profiles
+create policy "Admins can update profiles"
   on public.profiles for update
-  using (auth.uid() = id);
+  using (
+    exists (
+      select 1 from public.profiles
+      where id = auth.uid()
+      and role in ('admin', 'super_admin')
+    )
+  );
 
 -- ── PRODUCTS RLS ──────────────────────────────────────────────────────
 alter table public.products enable row level security;
 
--- All authenticated users (and public) can view products
+-- Anyone (public) can view products — no auth required
 create policy "Products are publicly readable"
   on public.products for select
   using (true);
@@ -38,17 +46,13 @@ create policy "Admins can manage products"
 -- ── ORDERS RLS ────────────────────────────────────────────────────────
 alter table public.orders enable row level security;
 
--- Users can view their own orders
-create policy "Users can view own orders"
-  on public.orders for select
-  using (auth.uid() = user_id);
-
--- Users can create orders
-create policy "Authenticated users can create orders"
+-- Public users can create orders (anonymous checkout)
+create policy "Anyone can create orders"
   on public.orders for insert
-  with check (auth.uid() = user_id or auth.uid() is not null);
+  with check (true);
 
--- Admins can view and update ALL orders
+-- Public users can NOT view orders (only admin can)
+-- Admins can view all orders
 create policy "Admins can view all orders"
   on public.orders for select
   using (
@@ -72,10 +76,10 @@ create policy "Admins can update all orders"
 -- ── PROMO CODES RLS ───────────────────────────────────────────────────
 alter table public.promo_codes enable row level security;
 
--- All authenticated users can read active promo codes
-create policy "Active promo codes are readable by authenticated users"
+-- Public users can read active promo codes (for checkout validation)
+create policy "Active promo codes are publicly readable"
   on public.promo_codes for select
-  using (active = true and auth.uid() is not null);
+  using (active = true);
 
 -- Only admins can manage promo codes
 create policy "Admins can manage promo codes"
@@ -91,10 +95,10 @@ create policy "Admins can manage promo codes"
 -- ── PROMO USAGE RLS ───────────────────────────────────────────────────
 alter table public.promo_usage enable row level security;
 
--- Users can view and insert their own usage
-create policy "Users can manage own promo usage"
-  on public.promo_usage for all
-  using (auth.uid() = user_id);
+-- Public users can insert usage (anonymous promo validation)
+create policy "Anyone can insert promo usage"
+  on public.promo_usage for insert
+  with check (true);
 
 -- Admins can view all
 create policy "Admins can view all promo usage"

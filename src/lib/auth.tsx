@@ -2,9 +2,9 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 
-// ── Simple passcode-based auth — no user accounts ─────────────────────────────
-// Site access: GC247
-// Admin access: verified server-side via /api/admin/verify
+// ── Public site, admin-only auth ──────────────────────────────────────────────
+// The site is fully public — no access code needed.
+// Admin access is verified server-side via /api/admin/verify.
 
 export type UserRole = "guest" | "member" | "admin";
 
@@ -36,7 +36,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// Generic anonymous user for checkout (no login needed)
+// Generic anonymous user — always available (public site)
 const ANON_USER: VaultUser = {
   id: "anon",
   username: "member",
@@ -63,31 +63,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<VaultUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // On mount: check localStorage for existing access
+  // On mount: everyone gets public access. Check if admin session exists.
   useEffect(() => {
     try {
-      const hasAccess = localStorage.getItem("gc247_access") === "true";
       const isAdmin = localStorage.getItem("gc247_admin") === "true";
-      if (hasAccess) {
-        setUser(isAdmin ? ADMIN_USER : ANON_USER);
-      }
-    } catch {}
+      setUser(isAdmin ? ADMIN_USER : ANON_USER);
+    } catch {
+      // Fallback — always public
+      setUser(ANON_USER);
+    }
     setLoading(false);
   }, []);
 
-  // Site passcode check (GC247)
-  const login = useCallback(async (username: string, _password: string): Promise<{ success: boolean; error?: string }> => {
-    if (username.trim().toUpperCase() === "GC247") {
-      try { localStorage.setItem("gc247_access", "true"); } catch {}
-      setUser(ANON_USER);
-      return { success: true };
-    }
-    return { success: false, error: "Invalid access code" };
+  // Site passcode check — no longer needed, always grant access
+  const login = useCallback(async (_username: string, _password: string): Promise<{ success: boolean; error?: string }> => {
+    setUser(ANON_USER);
+    return { success: true };
   }, []);
 
-  // Signup is disabled — just use the passcode
+  // Signup is disabled
   const signup = useCallback(async (_username: string, _password: string): Promise<{ success: boolean; error?: string }> => {
-    return { success: false, error: "Account creation disabled. Use the site access code." };
+    return { success: false, error: "Account creation disabled." };
   }, []);
 
   // Admin login — server-side only, no client-side secrets
@@ -105,7 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (data.session?.access_token) {
           try { localStorage.setItem("gc247_session", JSON.stringify(data.session)); } catch {}
         }
-        try { localStorage.setItem("gc247_access", "true"); localStorage.setItem("gc247_admin", "true"); } catch {}
+        try { localStorage.setItem("gc247_admin", "true"); } catch {}
         setUser(ADMIN_USER);
         return { success: true };
       }
@@ -117,10 +113,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     try {
-      localStorage.removeItem("gc247_access");
       localStorage.removeItem("gc247_admin");
+      localStorage.removeItem("gc247_session");
     } catch {}
-    setUser(null);
+    // After admin logout, user becomes public member again (not kicked out)
+    setUser(ANON_USER);
   }, []);
 
   const updateProfile = useCallback(async (updates: Partial<Pick<VaultUser, "displayName" | "avatar" | "email">>) => {

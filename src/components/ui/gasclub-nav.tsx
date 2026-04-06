@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { GasclubNavLogo } from "./gasclub-logo";
 import { cn } from "@/lib/utils";
-import { Home, Package, ShoppingCart, Shield, Ticket, Sun, Moon, ShoppingBag, LogOut, Check, Palette, X } from "lucide-react";
+import { Home, Package, ShoppingCart, Shield, Sun, Moon, ShoppingBag, LogOut, Check, Palette, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useTheme, COLOR_PROFILES } from "@/lib/theme";
 import { Slider } from "@/components/ui/slider";
@@ -14,14 +14,15 @@ import { useCart } from "@/lib/cart";
 import { LeadCaptureModal } from "./lead-capture-modal";
 
 function getTabs(isAdmin: boolean) {
-  return [
+  const tabs = [
     { label: "FEED", href: "/home", icon: Home },
     { label: "INVENTORY", href: "/inventory", icon: Package },
     { label: "ORDERS", href: "/orders", icon: ShoppingCart },
-    isAdmin
-      ? { label: "ADMIN", href: "/admin", icon: Shield }
-      : { label: "DEALS", href: "/deals", icon: Ticket },
   ];
+  if (isAdmin) {
+    tabs.push({ label: "ADMIN", href: "/admin", icon: Shield });
+  }
+  return tabs;
 }
 
 export function GasclubNav() {

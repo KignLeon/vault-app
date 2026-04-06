@@ -25,7 +25,7 @@ import {
 } from "@/lib/community";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-type AdminTab = "overview" | "orders" | "inventory" | "community" | "promos" | "users" | "create" | "leads" | "settings";
+type AdminTab = "overview" | "orders" | "inventory" | "community" | "users" | "settings";
 
 const STATUS_COLORS: Record<string, string> = {
   pending:    "bg-yellow-500/10 text-yellow-400 border-yellow-400/30",
@@ -72,11 +72,8 @@ export default function AdminPage() {
     { id: "overview",   label: "OVERVIEW",   icon: TrendingUp },
     { id: "orders",     label: "ORDERS",     icon: ShoppingCart },
     { id: "inventory",  label: "INVENTORY",  icon: Package },
-    { id: "community",  label: "COMMUNITY",  icon: FileText },
-    { id: "promos",     label: "PROMOS",     icon: Ticket },
+    { id: "community",  label: "FEED",       icon: FileText },
     { id: "users",      label: "USERS",      icon: Users },
-    { id: "create",     label: "CREATE",     icon: Plus },
-    { id: "leads",      label: "LEADS",      icon: UserCheck },
     { id: "settings",   label: "SETTINGS",   icon: Settings },
   ];
 
@@ -136,10 +133,7 @@ export default function AdminPage() {
           {activeTab === "orders"     && <OrdersPanel />}
           {activeTab === "inventory"  && <InventoryPanel />}
           {activeTab === "community"  && <CommunityPanel />}
-          {activeTab === "promos"     && <PromosPanel />}
           {activeTab === "users"      && <UsersPanel />}
-          {activeTab === "create"     && <CreatePanel />}
-          {activeTab === "leads"      && <LeadsPanel />}
           {activeTab === "settings"   && <SettingsPanel />}
         </motion.div>
       </AnimatePresence>
@@ -186,8 +180,9 @@ function OverviewPanel() {
 
   const stats = [
     { label: "PRODUCTS",       value: products.length,                                  icon: Package,      color: "" },
-    { label: "PENDING ORDERS", value: orders.filter(o => o.status === "pending").length, icon: ShoppingCart, color: "text-yellow-400" },
+    { label: "MEMBERS",        value: users.length,                                     icon: Users,        color: "text-blue-400" },
     { label: "TOTAL ORDERS",   value: orders.length,                                    icon: Activity,     color: "" },
+    { label: "PENDING ORDERS", value: orders.filter(o => o.status === "pending").length, icon: ShoppingCart, color: "text-yellow-400" },
     { label: "TOTAL REVENUE",  value: `$${revenue.toLocaleString()}`,                   icon: DollarSign,   color: "text-green-400" },
     { label: "COMPLETED REV.", value: `$${completedRevenue.toLocaleString()}`,           icon: DollarSign,   color: "text-green-400" },
     { label: "LEADS",          value: leadsCount,                                       icon: UserCheck,    color: "text-blue-400" },
@@ -610,7 +605,7 @@ function InventoryPanel() {
 
       {/* Products table */}
       <div className="border divide-y" style={{ borderColor: border }}>
-        <div className="grid grid-cols-8 gap-2 px-3 py-2 font-mono text-[9px] tracking-[0.15em]" style={{ background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)", color: muted }}>
+        <div className="hidden md:grid grid-cols-8 gap-2 px-3 py-2 font-mono text-[9px] tracking-[0.15em]" style={{ background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)", color: muted }}>
           <span className="col-span-2">NAME</span>
           <span className="col-span-1">CAT</span>
           <span>PRICE</span>
@@ -621,8 +616,8 @@ function InventoryPanel() {
 
         {loading ? <Loader /> : products.map(p => (
           <div key={p.id}>
-            <div className="grid grid-cols-8 gap-2 px-3 py-3 items-center">
-              <span className="col-span-2 font-mono text-[10px] font-medium truncate" style={{ color: fg }}>
+            <div className="flex flex-wrap gap-2 px-3 py-3 items-center md:grid md:grid-cols-8">
+              <span className="w-full md:w-auto md:col-span-2 font-mono text-[10px] font-medium truncate" style={{ color: fg }}>
                 {editingId === p.id
                   ? <input value={editVals.name} onChange={e => setEditVals(p2 => ({ ...p2, name: e.target.value }))} className="w-full bg-transparent border-b font-mono text-[10px] outline-none" style={{ borderColor: muted, color: fg }} />
                   : <>{p.name} {p.tags?.includes("hidden") && <span className="text-[8px] text-red-400 ml-1">HIDDEN</span>}</>}
@@ -1770,7 +1765,7 @@ function SettingsPanel() {
             { label: "WELCOME PROMO", value: "WELCOME247 (20% off)" },
             { label: "ORDER CONTACT", value: "+1 (310) 994-0642" },
             { label: "PAYMENT METHODS", value: "Zelle, Crypto" },
-            { label: "SITE ACCESS CODE", value: "GC247" },
+            { label: "SITE ACCESS", value: "Public (no code required)" },
             { label: "TELEGRAM ALERTS", value: "Enabled (order notifications)" },
           ].map(item => (
             <div key={item.label} className="flex items-center justify-between px-4 py-3">
@@ -1825,7 +1820,7 @@ function SettingsPanel() {
           </p>
         </div>
         <button
-          onClick={() => { localStorage.removeItem("gc247_session"); localStorage.removeItem("gc247_admin"); window.location.href = "/"; }}
+          onClick={() => { localStorage.removeItem("gc247_session"); localStorage.removeItem("gc247_admin"); window.location.href = "/?admin"; }}
           className="w-full mt-3 py-3 font-mono text-[10px] tracking-wider border transition-all active:scale-95"
           style={{ borderColor: "rgba(239,68,68,0.3)", color: "rgb(239,68,68)" }}
         >

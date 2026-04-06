@@ -268,7 +268,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
 
       const completedOrder: CompletedOrder = {
-        id: orderId,
+        id: dbOrderId || orderId,
+        dbId: dbOrderId,
         items: [...items],
         subtotal, discount,
         shipping: shippingCost,
@@ -278,6 +279,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         paymentMethod: info.paymentMethod,
         createdAt: new Date().toISOString(),
       };
+
+      // Persist order number to localStorage for cross-session retrieval
+      try {
+        const existing = JSON.parse(localStorage.getItem("gc247_my_orders") || "[]");
+        const orderNum = dbOrderId || orderId;
+        if (!existing.includes(orderNum)) {
+          existing.unshift(orderNum);
+          localStorage.setItem("gc247_my_orders", JSON.stringify(existing.slice(0, 50)));
+        }
+      } catch {}
 
       setOrders((prev) => [completedOrder, ...prev]);
       clearCart();

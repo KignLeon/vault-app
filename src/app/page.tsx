@@ -2,12 +2,10 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { GasclubLogo, GasclubWordmark, GasclubFooterLogo } from "@/components/ui/gasclub-logo";
 import { Globe } from "@/components/ui/cobe-globe";
 import { Lock, ArrowRight, Shield } from "lucide-react";
-
-const SITE_PASSCODE = "GC247";
 
 const globeMarkers = [
   { id: "sf", location: [37.7595, -122.4367] as [number, number], label: "San Francisco" },
@@ -24,43 +22,26 @@ const globeArcs = [
   { id: "a3", from: [41.8781, -87.6298] as [number, number], to: [33.749, -84.388] as [number, number], label: "CHI → ATL" },
 ];
 
-type ViewMode = "site" | "admin";
-
 export default function AccessPage() {
   const router = useRouter();
-  const [viewMode, setViewMode] = useState<ViewMode>("site");
-  const [code, setCode] = useState("");
+  const searchParams = useSearchParams();
   const [adminCode, setAdminCode] = useState("");
-  const [error, setError] = useState("");
   const [adminError, setAdminError] = useState("");
   const [entering, setEntering] = useState(false);
 
-  // Check if already have access
-  useEffect(() => {
-    try {
-      if (localStorage.getItem("gc247_access") === "true") {
-        router.push("/home");
-      }
-    } catch {}
-  }, [router]);
+  // If ?admin is in the URL, show admin login. Otherwise redirect straight to /home.
+  const isAdminMode = searchParams.get("admin") !== null;
 
-  const handleSiteAccess = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    if (code.trim().toUpperCase() === SITE_PASSCODE) {
-      try { localStorage.setItem("gc247_access", "true"); } catch {}
-      setEntering(true);
-      setTimeout(() => router.push("/home"), 800);
-    } else {
-      setError("INVALID CODE");
-      setTimeout(() => setError(""), 2000);
+  useEffect(() => {
+    if (!isAdminMode) {
+      router.replace("/home");
     }
-  }, [code, router]);
+  }, [isAdminMode, router]);
 
   const handleAdminAccess = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = adminCode.trim();
     
-    // Server-side only — passkey never stored in client bundle
     try {
       const res = await fetch("/api/admin/verify", {
         method: "POST",
@@ -69,11 +50,10 @@ export default function AccessPage() {
       });
       const data = await res.json();
       if (data.success) {
-        // Store session tokens from server
         if (data.session?.access_token) {
           try { localStorage.setItem("gc247_session", JSON.stringify(data.session)); } catch {}
         }
-        try { localStorage.setItem("gc247_access", "true"); localStorage.setItem("gc247_admin", "true"); } catch {}
+        try { localStorage.setItem("gc247_admin", "true"); } catch {}
         setEntering(true);
         setTimeout(() => router.push("/admin"), 800);
         return;
@@ -87,6 +67,15 @@ export default function AccessPage() {
   }, [adminCode, router]);
 
   const accentColor = "hsl(270, 70%, 65%)";
+
+  // Non-admin visitors get redirected — show nothing
+  if (!isAdminMode) {
+    return (
+      <div className="min-h-[100dvh] bg-black flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="relative flex flex-col items-center justify-center min-h-[100dvh] bg-black text-white overflow-hidden">
@@ -130,131 +119,67 @@ export default function AccessPage() {
               <GasclubWordmark className="text-white/70" accentColor={accentColor} size="large" />
             </motion.div>
 
-            {/* Mode Switcher */}
+            {/* Admin Header */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
               className="flex gap-0 border border-white/10 w-full"
             >
-              <button
-                onClick={() => { setViewMode("site"); setError(""); setAdminError(""); }}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-3 font-mono text-[10px] tracking-[0.2em] transition-all ${
-                  viewMode === "site" ? "text-black" : "text-white/30 hover:text-white/50"
-                }`}
-                style={{ background: viewMode === "site" ? accentColor : "transparent" }}
-              >
-                ENTER SITE
-              </button>
-              <button
-                onClick={() => { setViewMode("admin"); setError(""); setAdminError(""); }}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-3 font-mono text-[10px] tracking-[0.2em] transition-all ${
-                  viewMode === "admin" ? "text-black" : "text-white/30 hover:text-white/50"
-                }`}
-                style={{ background: viewMode === "admin" ? accentColor : "transparent" }}
+              <div
+                className="flex-1 flex items-center justify-center gap-1.5 py-3 font-mono text-[10px] tracking-[0.2em] text-black"
+                style={{ background: accentColor }}
               >
                 <Shield size={10} />
-                ADMIN
-              </button>
+                ADMIN ACCESS
+              </div>
             </motion.div>
 
-            {/* Forms */}
-            <AnimatePresence mode="wait">
-              {viewMode === "site" ? (
-                <motion.div
-                  key="site"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  transition={{ duration: 0.3 }}
-                  className="w-full"
-                >
-                  <div className="border border-white/10 bg-black/80 backdrop-blur-xl p-7 space-y-5">
-                    <div className="text-center space-y-1.5">
-                      <h2 className="font-mono text-sm tracking-[0.3em] font-bold text-white">PRIVATE ACCESS</h2>
-                      <p className="font-mono text-[10px] tracking-wider text-white/40">Enter your access code to continue</p>
-                    </div>
-                    <form onSubmit={handleSiteAccess} className="space-y-3">
-                      <div className="relative">
-                        <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-                        <input
-                          type="text"
-                          value={code}
-                          onChange={(e) => setCode(e.target.value)}
-                          placeholder="ACCESS CODE"
-                          className={`w-full bg-transparent border ${
-                            error ? "border-red-500/50" : "border-white/20"
-                          } px-10 py-3 font-mono text-xs tracking-[0.25em] text-white placeholder:text-white/20 outline-none focus:border-white/50 transition-colors`}
-                          autoComplete="off"
-                          autoFocus
-                        />
-                        <button
-                          type="submit"
-                          className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-white/40 hover:text-white active:scale-90 transition-all"
-                        >
-                          <ArrowRight size={16} />
-                        </button>
-                      </div>
-                      {error && (
-                        <motion.p
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          className="font-mono text-[10px] tracking-[0.2em] text-red-400/70 text-center"
-                        >
-                          {error}
-                        </motion.p>
-                      )}
-                    </form>
+            {/* Admin Login Form */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.4 }}
+              className="w-full"
+            >
+              <div className="border border-white/10 bg-black/80 backdrop-blur-xl p-7 space-y-4">
+                <div className="text-center space-y-1.5">
+                  <h2 className="font-mono text-sm tracking-[0.3em] font-bold text-white">ADMIN ACCESS</h2>
+                  <p className="font-mono text-[10px] tracking-wider text-white/40">Restricted entry · Passkey required</p>
+                </div>
+                <form onSubmit={handleAdminAccess} className="space-y-3">
+                  <div className="relative">
+                    <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                    <input
+                      type="password"
+                      value={adminCode}
+                      onChange={(e) => setAdminCode(e.target.value)}
+                      placeholder="ENTER PASSKEY"
+                      className={`w-full bg-transparent border ${
+                        adminError ? "border-red-500/50" : "border-white/20"
+                      } px-10 py-3 font-mono text-xs tracking-[0.25em] text-white placeholder:text-white/20 outline-none focus:border-white/50 transition-colors`}
+                      autoComplete="off"
+                      autoFocus
+                    />
+                    <button
+                      type="submit"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-white/40 hover:text-white active:scale-90 transition-all"
+                    >
+                      <ArrowRight size={16} />
+                    </button>
                   </div>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="admin"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.3 }}
-                  className="w-full"
-                >
-                  <div className="border border-white/10 bg-black/80 backdrop-blur-xl p-7 space-y-4">
-                    <div className="text-center space-y-1.5">
-                      <h2 className="font-mono text-sm tracking-[0.3em] font-bold text-white">ADMIN ACCESS</h2>
-                      <p className="font-mono text-[10px] tracking-wider text-white/40">Restricted entry · Passkey required</p>
-                    </div>
-                    <form onSubmit={handleAdminAccess} className="space-y-3">
-                      <div className="relative">
-                        <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-                        <input
-                          type="password"
-                          value={adminCode}
-                          onChange={(e) => setAdminCode(e.target.value)}
-                          placeholder="ENTER PASSKEY"
-                          className={`w-full bg-transparent border ${
-                            adminError ? "border-red-500/50" : "border-white/20"
-                          } px-10 py-3 font-mono text-xs tracking-[0.25em] text-white placeholder:text-white/20 outline-none focus:border-white/50 transition-colors`}
-                          autoComplete="off"
-                        />
-                        <button
-                          type="submit"
-                          className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-white/40 hover:text-white active:scale-90 transition-all"
-                        >
-                          <ArrowRight size={16} />
-                        </button>
-                      </div>
-                      {adminError && (
-                        <motion.p
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          className="font-mono text-[10px] tracking-[0.2em] text-red-400/70 text-center"
-                        >
-                          {adminError}
-                        </motion.p>
-                      )}
-                    </form>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                  {adminError && (
+                    <motion.p
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="font-mono text-[10px] tracking-[0.2em] text-red-400/70 text-center"
+                    >
+                      {adminError}
+                    </motion.p>
+                  )}
+                </form>
+              </div>
+            </motion.div>
 
             <motion.p
               initial={{ opacity: 0 }}
@@ -262,7 +187,7 @@ export default function AccessPage() {
               transition={{ duration: 0.6, delay: 0.6 }}
               className="font-mono text-[9px] tracking-[0.3em] text-white/15 text-center"
             >
-              PRIVATE CLUB · PREMIUM DROPS · DIRECT ACCESS
+              ADMIN CONTROL PANEL · RESTRICTED ACCESS
             </motion.p>
           </motion.div>
         ) : (

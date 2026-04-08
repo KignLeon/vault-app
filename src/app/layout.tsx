@@ -43,7 +43,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${ibmPlexMono.variable} h-full antialiased`}>
+    <html lang="en" className={`${inter.variable} ${ibmPlexMono.variable} antialiased`}>
       <body className="min-h-[100dvh] flex flex-col font-sans">
         <Providers>{children}</Providers>
       </body>

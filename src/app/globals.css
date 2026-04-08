@@ -62,7 +62,7 @@ html {
 }
 
 /* Prevent horizontal overflow on mobile */
-html, body {
+body {
   overflow-x: hidden;
   max-width: 100vw;
 }

@@ -341,30 +341,6 @@ export default function InventoryPage() {
                   </button>
                 </div>
 
-                {/* Contact-based options */}
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => buildOrderMsg("sms")}
-                    className="flex-1 py-2.5 font-mono text-[9px] tracking-[0.15em] flex items-center justify-center gap-1.5 border active:scale-95 transition-transform"
-                    style={{ borderColor: border, color: muted }}
-                  >
-                    <MessageCircle size={11} /> ORDER VIA TEXT
-                  </button>
-                  <button
-                    onClick={() => buildOrderMsg("whatsapp")}
-                    className="flex-1 py-2.5 font-mono text-[9px] tracking-[0.15em] flex items-center justify-center gap-1.5 border active:scale-95 transition-transform"
-                    style={{ borderColor: border, color: muted }}
-                  >
-                    <Phone size={11} /> WHATSAPP
-                  </button>
-                  <button
-                    onClick={() => alert("Local meetup request submitted!")}
-                    className="flex-1 py-2.5 font-mono text-[9px] tracking-[0.15em] flex items-center justify-center gap-1.5 border active:scale-95 transition-transform"
-                    style={{ borderColor: border, color: muted }}
-                  >
-                    <MapPin size={11} /> MEETUP
-                  </button>
-                </div>
               </div>
             </motion.div>
           </motion.div>

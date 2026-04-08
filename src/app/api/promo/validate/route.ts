@@ -58,7 +58,20 @@ export async function POST(request: NextRequest) {
       .eq("active", true)
       .single();
 
+    // Check WELCOME247 from env (lead capture promo — no DB entry needed)
+    const welcomePromo = (process.env.WELCOME_PROMO_CODE || "WELCOME247").toUpperCase();
+    const welcomeDiscount = Number(process.env.WELCOME_PROMO_DISCOUNT || "20");
+
     if (error || !promo) {
+      // If the code matches the welcome promo, validate it directly (no DB entry required)
+      if (code === welcomePromo) {
+        return NextResponse.json({
+          valid: true,
+          discount: welcomeDiscount / 100,
+          oneTime: false,
+          code: welcomePromo,
+        });
+      }
       return NextResponse.json({ valid: false, error: "Invalid promo code" });
     }
 
@@ -86,11 +99,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Also check WELCOME247 from env (lead capture promo — no DB entry needed)
-    const welcomePromo = process.env.WELCOME_PROMO_CODE || "WELCOME247";
-    const welcomeDiscount = Number(process.env.WELCOME_PROMO_DISCOUNT || "20");
-
-    // Return validated promo
+    // Return validated promo from DB
     return NextResponse.json({
       valid: true,
       discount: promo.discount_pct / 100,

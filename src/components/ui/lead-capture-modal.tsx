@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Mail, Phone, Sparkles, Copy, Check, Gift } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 
 const STORAGE_KEY = "gc247_lead_captured";
-const DELAY_MS = 0; // triggers immediately after mount
+const AUTO_DELAY_MS = 2000; // 2s delay before auto-show on /home
 
 // Global state to allow navbar icon to toggle modal
 let _setOpenGlobal: ((v: boolean) => void) | null = null;
@@ -14,6 +15,7 @@ export function openLeadModal() { _setOpenGlobal?.(true); }
 
 export function LeadCaptureModal() {
   const { fg, border, muted, accent, accentFg, accentGlow, isDark } = useTheme();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [email, setEmail] = useState("");
@@ -30,11 +32,17 @@ export function LeadCaptureModal() {
     return () => { _setOpenGlobal = null; };
   }, []);
 
+  // Auto-open logic: ONLY on /home, ONLY if not already captured, with delay
   useEffect(() => {
+    // Check if already captured/dismissed
     try { if (localStorage.getItem(STORAGE_KEY)) { setDismissed(true); return; } } catch {}
-    const timer = setTimeout(() => setOpen(true), DELAY_MS);
+
+    // Only auto-trigger on the feed page
+    if (pathname !== "/home") return;
+
+    const timer = setTimeout(() => setOpen(true), AUTO_DELAY_MS);
     return () => clearTimeout(timer);
-  }, []);
+  }, [pathname]);
 
   const handleDismiss = useCallback(() => {
     setOpen(false);
@@ -73,9 +81,9 @@ export function LeadCaptureModal() {
 
   return (
     <>
-      {/* Navbar collapsed icon — shown when dismissed or submitted */}
+      {/* Navbar Gift icon — always shown after dismiss or on non-home pages */}
       <AnimatePresence>
-        {dismissed && !open && (
+        {(dismissed || pathname !== "/home") && !open && (
           <motion.button
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -87,7 +95,7 @@ export function LeadCaptureModal() {
             title={success ? "View your promo code" : "Get 20% off your first order"}
           >
             <Gift size={13} style={{ color: accent }} />
-            {!success && (
+            {!success && !dismissed && (
               <span
                 className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full"
                 style={{ background: accent }}
@@ -111,7 +119,7 @@ export function LeadCaptureModal() {
               onClick={handleDismiss}
             />
 
-            {/* Glass Modal — centering wrapper keeps position stable while inner animates */}
+            {/* Glass Modal */}
             <div
               className="fixed inset-0 z-[201] flex items-center justify-center"
               style={{ pointerEvents: "none", padding: "24px 16px", minHeight: "100dvh" }}

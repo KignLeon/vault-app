@@ -2,7 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef, DragEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AppShell } from "@/components/layout/app-shell";
 import { StockBadge } from "@/components/ui/stock-badge";
@@ -14,6 +14,7 @@ import {
   ChevronDown, Plus, Trash2, Pin, Star, Tag, Shield,
   Activity, Ticket, Image as ImageIcon, Hash, BarChart2,
   UserCheck, UserX, AlertCircle, Settings, Eye, EyeOff,
+  Upload, GripVertical,
 } from "lucide-react";
 import { fetchProducts, updateProduct } from "@/lib/products";
 import type { NormalizedProduct } from "@/lib/products";
@@ -46,7 +47,7 @@ const ROLE_COLORS: Record<string, string> = {
 // ── Helper: get stored admin session token ────────────────────────────────────
 function getAdminToken(): string | null {
   try {
-    const sess = localStorage.getItem("gc247_session");
+    const sess = sessionStorage.getItem("gc247_session");
     if (sess) {
       const parsed = JSON.parse(sess);
       return parsed.access_token || null;
@@ -151,7 +152,6 @@ function OverviewPanel() {
   const [products, setProducts] = useState<NormalizedProduct[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [leadsCount, setLeadsCount] = useState(0);
 
   useEffect(() => {
     Promise.all([
@@ -159,13 +159,10 @@ function OverviewPanel() {
         .then(r => r.json()).then(d => d.orders || []).catch(() => []),
       fetchProducts(),
       fetchAllUsers(),
-      fetch("/api/leads", { headers: adminHeaders() })
-        .then(r => r.json()).then(d => d.leads || []).catch(() => []),
-    ]).then(([orderData, productData, userData, leadData]) => {
+    ]).then(([orderData, productData, userData]) => {
       setOrders(orderData);
       setProducts(productData);
       setUsers(userData);
-      setLeadsCount(leadData.length);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
@@ -185,7 +182,6 @@ function OverviewPanel() {
     { label: "PENDING ORDERS", value: orders.filter(o => o.status === "pending").length, icon: ShoppingCart, color: "text-yellow-400" },
     { label: "TOTAL REVENUE",  value: `$${revenue.toLocaleString()}`,                   icon: DollarSign,   color: "text-green-400" },
     { label: "COMPLETED REV.", value: `$${completedRevenue.toLocaleString()}`,           icon: DollarSign,   color: "text-green-400" },
-    { label: "LEADS",          value: leadsCount,                                       icon: UserCheck,    color: "text-blue-400" },
   ];
 
   return (
@@ -414,86 +410,270 @@ function OrdersPanel() {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// IMAGE UPLOAD COMPONENT — Drag & Drop + Click to Upload
+// ══════════════════════════════════════════════════════════════════════════════
+function ImageUploadZone({
+  imageUrl, onUpload, onClear, uploading, label = "PRODUCT IMAGE",
+}: {
+  imageUrl: string;
+  onUpload: (file: File) => void;
+  onClear: () => void;
+  uploading: boolean;
+  label?: string;
+}) {
+  const { fg, border, muted, accent, isDark } = useTheme();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith("image/")) onUpload(file);
+  };
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => { e.preventDefault(); setDragging(true); };
+  const handleDragLeave = () => setDragging(false);
+
+  return (
+    <div>
+      <span className="font-mono text-[9px] tracking-[0.2em] block mb-2" style={{ color: muted }}>{label}</span>
+      {imageUrl ? (
+        <div className="relative group">
+          <img
+            src={imageUrl}
+            alt="Preview"
+            className="w-full aspect-square object-cover border"
+            style={{ borderColor: border, maxHeight: 200 }}
+          />
+          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+            <button
+              onClick={() => fileRef.current?.click()}
+              className="px-3 py-1.5 font-mono text-[9px] tracking-wider border border-white/30 text-white hover:bg-white/10 transition-colors"
+            >
+              REPLACE
+            </button>
+            <button
+              onClick={onClear}
+              className="px-3 py-1.5 font-mono text-[9px] tracking-wider border border-red-400/50 text-red-400 hover:bg-red-400/10 transition-colors"
+            >
+              REMOVE
+            </button>
+          </div>
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) onUpload(f); }} />
+        </div>
+      ) : (
+        <div
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onClick={() => !uploading && fileRef.current?.click()}
+          className="border-2 border-dashed cursor-pointer transition-all flex flex-col items-center justify-center gap-3 py-8"
+          style={{
+            borderColor: dragging ? accent : border,
+            background: dragging ? `${accent}10` : (isDark ? "rgba(255,255,255,0.015)" : "rgba(0,0,0,0.01)"),
+          }}
+        >
+          {uploading ? (
+            <>
+              <div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${accent}40`, borderTopColor: accent }} />
+              <span className="font-mono text-[9px] tracking-wider" style={{ color: accent }}>UPLOADING...</span>
+            </>
+          ) : (
+            <>
+              <Upload size={20} style={{ color: muted }} />
+              <div className="text-center">
+                <p className="font-mono text-[10px] tracking-wider" style={{ color: fg }}>Drop image here or click to upload</p>
+                <p className="font-mono text-[8px] tracking-wider mt-1" style={{ color: muted }}>JPEG, PNG, WebP · Max 10 MB</p>
+              </div>
+            </>
+          )}
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) onUpload(f); }} disabled={uploading} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // INVENTORY PANEL
 // ══════════════════════════════════════════════════════════════════════════════
 function InventoryPanel() {
   const { fg, border, muted, accent, accentFg, isDark } = useTheme();
   const [products, setProducts] = useState<NormalizedProduct[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editVals, setEditVals] = useState<{
-    price: string; stock: string; name: string;
-    description: string; category: string; tags: string;
-    featured: boolean; imageUrl: string;
-  }>({ price: "", stock: "", name: "", description: "", category: "featured", tags: "", featured: false, imageUrl: "" });
   const [saving, setSaving] = useState(false);
-  const [showAdd, setShowAdd] = useState(false);
-  const [addForm, setAddForm] = useState({ sku: "", name: "", category: "featured", price: "", stock: "", description: "", imageUrl: "" });
-  const [addError, setAddError] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
+  // Toast notification
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const showToast = (message: string, type: "success" | "error" = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 2500);
+  };
+
+  // Inline quick-edit state
+  const [inlineEdit, setInlineEdit] = useState<{ id: string; field: "price" | "stock"; value: string } | null>(null);
+  const inlineInputRef = useRef<HTMLInputElement>(null);
+  const thumbInputRef = useRef<HTMLInputElement>(null);
+  const [thumbUploadId, setThumbUploadId] = useState<string | null>(null);
+
+  // Modal state — single modal for both create and edit
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<"create" | "edit">("create");
+  const [editorId, setEditorId] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    sku: "", name: "", category: "featured", price: "", stock: "",
+    description: "", imageUrl: "", tags: "", featured: false,
+  });
+  const [formError, setFormError] = useState("");
+
   const categories = ["featured", "exotic", "candy", "gas", "premium", "prerolls", "smalls"];
 
+  useEffect(() => { fetchProducts().then(d => { setProducts(d); setLoading(false); }); }, []);
+
+  // ── Upload handler (works for both create + edit) ──
   const handleImageUpload = async (file: File) => {
     setUploading(true);
+    setFormError("");
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("folder", `gasclub247/products/${addForm.category}`);
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("folder", `gasclub247/products/${form.category}`);
+      const token = getAdminToken();
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch("/api/upload", { method: "POST", body: fd, headers });
       const data = await res.json();
-      if (data.optimizedUrl) {
-        setAddForm(p => ({ ...p, imageUrl: data.optimizedUrl }));
-      } else if (data.url) {
-        setAddForm(p => ({ ...p, imageUrl: data.url }));
+      if (data.optimizedUrl || data.url) {
+        setForm(p => ({ ...p, imageUrl: data.optimizedUrl || data.url }));
       } else {
-        setAddError(data.error || "Upload failed");
+        setFormError(data.error || "Upload failed");
       }
     } catch {
-      setAddError("Image upload failed");
+      setFormError("Image upload failed. Check connection.");
     }
     setUploading(false);
   };
 
-  useEffect(() => { fetchProducts().then(d => { setProducts(d); setLoading(false); }); }, []);
-
-  const startEdit = (p: NormalizedProduct) => {
-    setEditingId(p.id);
-    setEditVals({
-      price: String(p.price), stock: String(p.stock), name: p.name,
-      description: p.description || "", category: p.category || "featured",
-      tags: (p.tags || []).join(", "), featured: p.featured || false,
-      imageUrl: p.image || "",
-    });
+  // ── Open modal for new product ──
+  const openCreate = () => {
+    setModalMode("create");
+    setEditorId(null);
+    setForm({ sku: "", name: "", category: "featured", price: "", stock: "", description: "", imageUrl: "", tags: "", featured: false });
+    setFormError("");
+    setModalOpen(true);
   };
 
-  const saveEdit = async (id: string) => {
-    setSaving(true);
-    const newStock = Number(editVals.stock);
-    const newStatus = newStock === 0 ? "sold-out" : newStock <= 10 ? "low-stock" : "in-stock";
-    const tagArr = editVals.tags.split(",").map(t => t.trim()).filter(Boolean);
-    const isHidden = tagArr.includes("hidden");
-    await updateProduct(id, {
-      name: editVals.name,
-      price: Number(editVals.price),
-      stock: newStock,
-      status: isHidden ? "sold-out" : newStatus,
-      description: editVals.description,
-      category: editVals.category,
-      tags: tagArr,
-      featured: editVals.featured,
-      image_url: editVals.imageUrl || undefined,
+  // ── Open modal to edit existing product ──
+  const openEdit = (p: NormalizedProduct) => {
+    setModalMode("edit");
+    setEditorId(p.id);
+    setForm({
+      sku: p.sku || "", name: p.name, category: p.category || "featured",
+      price: String(p.price), stock: String(p.stock),
+      description: p.description || "", imageUrl: p.image || "",
+      tags: (p.tags || []).join(", "), featured: p.featured || false,
     });
-    setProducts(prev => prev.map(p => p.id === id ? {
-      ...p, name: editVals.name, price: Number(editVals.price), stock: newStock,
-      status: (isHidden ? "sold-out" : newStatus) as any,
-      description: editVals.description, category: editVals.category,
-      tags: tagArr, featured: editVals.featured,
-      image: editVals.imageUrl || p.image,
-    } : p));
-    setEditingId(null);
+    setFormError("");
+    setModalOpen(true);
+  };
+
+  // ── Save (create or update) ──
+  const handleSave = async () => {
+    if (!form.name || !form.price) { setFormError("Name and Price are required."); return; }
+    if (modalMode === "create" && !form.sku) { setFormError("SKU is required for new products."); return; }
+    setFormError("");
+    setSaving(true);
+
+    if (modalMode === "create") {
+      const result = await createProduct({
+        sku: form.sku, name: form.name, category: form.category,
+        price: Number(form.price), stock: Number(form.stock) || 0,
+        description: form.description, imageUrl: form.imageUrl || undefined,
+      });
+      if (result.success) {
+        setModalOpen(false);
+        fetchProducts().then(setProducts);
+        showToast("Product added successfully");
+      } else {
+        setFormError(result.error || "Failed to add product");
+      }
+    } else if (editorId) {
+      const newStock = Number(form.stock);
+      const newStatus = newStock === 0 ? "sold-out" : newStock <= 10 ? "low-stock" : "in-stock";
+      const tagArr = form.tags.split(",").map(t => t.trim()).filter(Boolean);
+      const isHidden = tagArr.includes("hidden");
+      await updateProduct(editorId, {
+        name: form.name, price: Number(form.price), stock: newStock,
+        status: isHidden ? "sold-out" : newStatus,
+        description: form.description, category: form.category,
+        tags: tagArr, featured: form.featured,
+        image_url: form.imageUrl || undefined,
+      });
+      setProducts(prev => prev.map(p => p.id === editorId ? {
+        ...p, name: form.name, price: Number(form.price), stock: newStock,
+        status: (isHidden ? "sold-out" : newStatus) as any,
+        description: form.description, category: form.category,
+        tags: tagArr, featured: form.featured,
+        image: form.imageUrl || p.image,
+      } : p));
+      setModalOpen(false);
+      showToast("Product updated");
+    }
     setSaving(false);
+  };
+
+  // ── Inline quick-edit save ──
+  const saveInlineEdit = async () => {
+    if (!inlineEdit) return;
+    const { id, field, value } = inlineEdit;
+    const numVal = Number(value);
+    if (isNaN(numVal) || numVal < 0) { setInlineEdit(null); return; }
+
+    const product = products.find(p => p.id === id);
+    if (!product) { setInlineEdit(null); return; }
+
+    const updates: any = {};
+    if (field === "price") updates.price = numVal;
+    if (field === "stock") {
+      updates.stock = numVal;
+      updates.status = numVal === 0 ? "sold-out" : numVal <= 10 ? "low-stock" : "in-stock";
+    }
+
+    await updateProduct(id, updates);
+    setProducts(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+    setInlineEdit(null);
+    showToast(`${field.charAt(0).toUpperCase() + field.slice(1)} updated`);
+  };
+
+  // ── Thumbnail image swap ──
+  const handleThumbUpload = async (file: File, productId: string) => {
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+    setThumbUploadId(productId);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("folder", `gasclub247/products/${product.category || "featured"}`);
+      const token = getAdminToken();
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch("/api/upload", { method: "POST", body: fd, headers });
+      const data = await res.json();
+      const newUrl = data.optimizedUrl || data.url;
+      if (newUrl) {
+        await updateProduct(productId, { image_url: newUrl });
+        setProducts(prev => prev.map(p => p.id === productId ? { ...p, image: newUrl } : p));
+        showToast("Image updated");
+      } else {
+        showToast("Upload failed", "error");
+      }
+    } catch {
+      showToast("Image upload failed", "error");
+    }
+    setThumbUploadId(null);
   };
 
   const handleDelete = async (id: string, name: string) => {
@@ -502,200 +682,373 @@ function InventoryPanel() {
     await deleteProduct(id);
     setProducts(prev => prev.filter(p => p.id !== id));
     setDeletingId(null);
-  };
-
-  const handleAdd = async () => {
-    if (!addForm.sku || !addForm.name || !addForm.price) { setAddError("SKU, Name, and Price are required."); return; }
-    setAddError(""); setSaving(true);
-    const result = await createProduct({
-      sku: addForm.sku, name: addForm.name, category: addForm.category,
-      price: Number(addForm.price), stock: Number(addForm.stock) || 0,
-      description: addForm.description, imageUrl: addForm.imageUrl || undefined,
-    });
-    if (result.success) {
-      setShowAdd(false);
-      setAddForm({ sku: "", name: "", category: "indoors", price: "", stock: "", description: "", imageUrl: "" });
-      fetchProducts().then(setProducts);
-    } else {
-      setAddError(result.error || "Failed to add product");
-    }
-    setSaving(false);
+    showToast(`"${name}" deleted`);
   };
 
   return (
     <div className="space-y-5">
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className="fixed top-24 left-1/2 -translate-x-1/2 z-[300] font-mono text-[10px] tracking-wider px-5 py-2.5 flex items-center gap-2"
+            style={{
+              background: toast.type === "success" ? accent : "rgb(239,68,68)",
+              color: toast.type === "success" ? accentFg : "#fff",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
+            }}
+          >
+            {toast.type === "success" ? <Check size={12} /> : <X size={12} />}
+            {toast.message.toUpperCase()}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Hidden file input for thumbnail image swap */}
+      <input
+        ref={thumbInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={e => {
+          const f = e.target.files?.[0];
+          const id = thumbInputRef.current?.dataset.productId;
+          if (f && id) handleThumbUpload(f, id);
+          if (thumbInputRef.current) thumbInputRef.current.value = "";
+        }}
+      />
+
       <div className="flex items-center justify-between">
         <span className="font-mono text-[10px] tracking-[0.2em]" style={{ color: muted }}>
           {loading ? "..." : `${products.length} PRODUCTS`}
         </span>
-        <button onClick={() => setShowAdd(!showAdd)}
-          className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] tracking-wider transition-all"
+        <button onClick={openCreate}
+          className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] tracking-wider transition-all active:scale-95"
           style={{ background: accent, color: accentFg }}
         >
           <Plus size={12} /> ADD PRODUCT
         </button>
       </div>
 
-      {/* Add product form */}
+      {/* ── Product Editor Modal ── */}
       <AnimatePresence>
-        {showAdd && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-            className="border overflow-hidden" style={{ borderColor: accent }}
+        {modalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+            style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}
+            onClick={() => !saving && setModalOpen(false)}
           >
-            <div className="p-4 space-y-3">
-              <Label>NEW PRODUCT</Label>
-              <div className="grid grid-cols-2 gap-3">
-                <AdminInput label="SKU" value={addForm.sku} onChange={v => setAddForm(p => ({ ...p, sku: v }))} placeholder="e.g. TC-PLMC-01" />
-                <AdminInput label="Name" value={addForm.name} onChange={v => setAddForm(p => ({ ...p, name: v }))} placeholder="e.g. PLATINUM LEMON CHERRY" />
-                <AdminInput label="Price ($)" value={addForm.price} onChange={v => setAddForm(p => ({ ...p, price: v }))} placeholder="120" type="number" />
-                <AdminInput label="Stock" value={addForm.stock} onChange={v => setAddForm(p => ({ ...p, stock: v }))} placeholder="50" type="number" />
-              </div>
-              <div>
-                <span className="font-mono text-[9px] tracking-wider block mb-1" style={{ color: muted }}>CATEGORY</span>
-                <div className="flex gap-2 flex-wrap">
-                  {categories.map(c => (
-                    <button key={c} onClick={() => setAddForm(p => ({ ...p, category: c }))}
-                      className="font-mono text-[9px] px-2 py-1 border transition-all"
-                      style={{ borderColor: addForm.category === c ? accent : border, color: addForm.category === c ? accent : muted, background: addForm.category === c ? `${accent}15` : "transparent" }}
-                    >
-                      {c.toUpperCase()}
-                    </button>
-                  ))}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              onClick={e => e.stopPropagation()}
+              className="w-full max-w-lg max-h-[90dvh] overflow-y-auto overscroll-contain border"
+              style={{ background: isDark ? "#0a0a0a" : "#fff", borderColor: border }}
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: border }}>
+                <div className="flex items-center gap-2">
+                  <Package size={14} style={{ color: accent }} />
+                  <span className="font-mono text-[10px] tracking-[0.2em] font-bold" style={{ color: fg }}>
+                    {modalMode === "create" ? "NEW PRODUCT" : "EDIT PRODUCT"}
+                  </span>
                 </div>
+                <button onClick={() => !saving && setModalOpen(false)} className="p-1 hover:opacity-60 transition-opacity" style={{ color: muted }}>
+                  <X size={16} />
+                </button>
               </div>
-              <AdminInput label="Description" value={addForm.description} onChange={v => setAddForm(p => ({ ...p, description: v }))} placeholder="Strain description…" />
-              {/* Image upload */}
-              <div>
-                <span className="font-mono text-[9px] tracking-wider block mb-1" style={{ color: muted }}>PRODUCT IMAGE</span>
-                <div className="flex gap-2">
-                  <label
-                    className="flex-1 border border-dashed px-3 py-2 font-mono text-[10px] tracking-wider cursor-pointer text-center transition-all hover:opacity-70"
-                    style={{ borderColor: border, color: muted }}
-                  >
-                    {uploading ? "UPLOADING..." : addForm.imageUrl ? "✅ IMAGE UPLOADED" : "📷 CLICK TO UPLOAD"}
-                    <input type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); }} disabled={uploading} />
-                  </label>
-                </div>
-                {addForm.imageUrl && (
-                  <div className="mt-2 flex items-center gap-2">
-                    <img src={addForm.imageUrl} alt="Preview" className="w-12 h-12 object-cover border" style={{ borderColor: border }} />
-                    <input value={addForm.imageUrl} onChange={e => setAddForm(p => ({ ...p, imageUrl: e.target.value }))} className="flex-1 bg-transparent border px-2 py-1 font-mono text-[9px] outline-none" style={{ borderColor: border, color: muted }} />
+
+              <div className="p-4 space-y-5">
+                {/* ── Section: Basic Info ── */}
+                <div>
+                  <div className="flex items-center gap-1.5 mb-3">
+                    <Tag size={11} style={{ color: accent }} />
+                    <span className="font-mono text-[8px] tracking-[0.25em]" style={{ color: muted }}>BASIC INFO</span>
                   </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    {modalMode === "create" && (
+                      <AdminInput label="SKU" value={form.sku} onChange={v => setForm(p => ({ ...p, sku: v }))} placeholder="TC-PLMC-01" />
+                    )}
+                    <AdminInput label="NAME" value={form.name} onChange={v => setForm(p => ({ ...p, name: v }))} placeholder="PLATINUM LEMON CHERRY" />
+                    <AdminInput label="PRICE ($)" value={form.price} onChange={v => setForm(p => ({ ...p, price: v }))} placeholder="120" type="number" />
+                    <AdminInput label="STOCK" value={form.stock} onChange={v => setForm(p => ({ ...p, stock: v }))} placeholder="50" type="number" />
+                  </div>
+                  <div className="mt-3">
+                    <span className="font-mono text-[9px] tracking-wider block mb-1.5" style={{ color: muted }}>CATEGORY</span>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {categories.map(c => (
+                        <button key={c} onClick={() => setForm(p => ({ ...p, category: c }))}
+                          className="font-mono text-[8px] px-2.5 py-1 border transition-all"
+                          style={{
+                            borderColor: form.category === c ? accent : border,
+                            color: form.category === c ? accent : muted,
+                            background: form.category === c ? `${accent}15` : "transparent",
+                          }}
+                        >
+                          {c.toUpperCase()}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Section: Product Media ── */}
+                <div className="border-t pt-4" style={{ borderColor: border }}>
+                  <div className="flex items-center gap-1.5 mb-3">
+                    <ImageIcon size={11} style={{ color: accent }} />
+                    <span className="font-mono text-[8px] tracking-[0.25em]" style={{ color: muted }}>PRODUCT MEDIA</span>
+                  </div>
+                  <ImageUploadZone
+                    imageUrl={form.imageUrl}
+                    onUpload={handleImageUpload}
+                    onClear={() => setForm(p => ({ ...p, imageUrl: "" }))}
+                    uploading={uploading}
+                  />
+                </div>
+
+                {/* ── Section: Details ── */}
+                <div className="border-t pt-4" style={{ borderColor: border }}>
+                  <div className="flex items-center gap-1.5 mb-3">
+                    <FileText size={11} style={{ color: accent }} />
+                    <span className="font-mono text-[8px] tracking-[0.25em]" style={{ color: muted }}>DETAILS</span>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <span className="font-mono text-[9px] tracking-wider block mb-1" style={{ color: muted }}>DESCRIPTION</span>
+                      <textarea
+                        value={form.description}
+                        onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+                        placeholder="Strain description, effects, genetics…"
+                        rows={3}
+                        className="w-full bg-transparent border px-3 py-2 font-mono text-[10px] tracking-wider outline-none resize-none leading-relaxed"
+                        style={{ borderColor: border, color: fg }}
+                      />
+                    </div>
+                    <AdminInput label="TAGS (comma separated)" value={form.tags} onChange={v => setForm(p => ({ ...p, tags: v }))} placeholder="popular, featured, in stock" />
+                  </div>
+                </div>
+
+                {/* ── Section: Visibility ── */}
+                <div className="border-t pt-4" style={{ borderColor: border }}>
+                  <div className="flex items-center gap-1.5 mb-3">
+                    <Eye size={11} style={{ color: accent }} />
+                    <span className="font-mono text-[8px] tracking-[0.25em]" style={{ color: muted }}>VISIBILITY & SETTINGS</span>
+                  </div>
+                  <div className="space-y-3">
+                    {/* Featured Toggle */}
+                    <div className="flex items-center justify-between p-3 border" style={{ borderColor: form.featured ? accent : border, background: form.featured ? `${accent}08` : 'transparent' }}>
+                      <div className="flex items-center gap-2">
+                        <Star size={12} style={{ color: form.featured ? accent : muted }} />
+                        <div>
+                          <span className="font-mono text-[9px] tracking-wider block" style={{ color: fg }}>FEATURED PRODUCT</span>
+                          <span className="font-mono text-[8px]" style={{ color: muted }}>Show in featured section on homepage</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setForm(p => ({ ...p, featured: !p.featured }))}
+                        className="relative w-9 h-5 rounded-full transition-colors duration-200"
+                        style={{ background: form.featured ? accent : (isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)') }}
+                      >
+                        <span className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform duration-200" style={{ transform: form.featured ? 'translateX(16px)' : 'translateX(0)' }} />
+                      </button>
+                    </div>
+                    {/* Hidden Toggle */}
+                    <div className="flex items-center justify-between p-3 border" style={{ borderColor: form.tags.includes('hidden') ? 'rgba(239,68,68,0.4)' : border, background: form.tags.includes('hidden') ? 'rgba(239,68,68,0.05)' : 'transparent' }}>
+                      <div className="flex items-center gap-2">
+                        <EyeOff size={12} style={{ color: form.tags.includes('hidden') ? 'rgb(239,68,68)' : muted }} />
+                        <div>
+                          <span className="font-mono text-[9px] tracking-wider block" style={{ color: fg }}>HIDDEN FROM STORE</span>
+                          <span className="font-mono text-[8px]" style={{ color: muted }}>Product won't appear in public store</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const curTags = form.tags.split(',').map(t => t.trim()).filter(t => t && t !== 'hidden');
+                          if (!form.tags.includes('hidden')) curTags.push('hidden');
+                          setForm(p => ({ ...p, tags: curTags.join(', ') }));
+                        }}
+                        className="relative w-9 h-5 rounded-full transition-colors duration-200"
+                        style={{ background: form.tags.includes('hidden') ? 'rgb(239,68,68)' : (isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)') }}
+                      >
+                        <span className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform duration-200" style={{ transform: form.tags.includes('hidden') ? 'translateX(16px)' : 'translateX(0)' }} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Error ── */}
+                {formError && (
+                  <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="font-mono text-[9px] text-red-400 bg-red-400/10 border border-red-400/20 px-3 py-2">
+                    {formError}
+                  </motion.p>
                 )}
               </div>
-              {addError && <p className="font-mono text-[9px] text-red-400">{addError}</p>}
-              <div className="flex gap-3">
-                <button onClick={handleAdd} disabled={saving}
-                  className="flex-1 py-2 font-mono text-[10px] tracking-wider transition-all disabled:opacity-50"
+
+              {/* Modal Footer */}
+              <div className="flex gap-3 p-4 border-t" style={{ borderColor: border }}>
+                <button onClick={handleSave} disabled={saving || uploading}
+                  className="flex-1 py-2.5 font-mono text-[10px] tracking-[0.15em] font-bold transition-all disabled:opacity-50 active:scale-[0.98]"
                   style={{ background: accent, color: accentFg }}
                 >
-                  {saving ? "SAVING..." : "ADD PRODUCT"}
+                  {saving ? "SAVING..." : modalMode === "create" ? "ADD PRODUCT" : "SAVE CHANGES"}
                 </button>
-                <button onClick={() => setShowAdd(false)}
-                  className="px-4 py-2 font-mono text-[10px] border transition-all"
+                <button onClick={() => !saving && setModalOpen(false)}
+                  className="px-5 py-2.5 font-mono text-[10px] tracking-wider border transition-all"
                   style={{ borderColor: border, color: muted }}
                 >
                   CANCEL
                 </button>
               </div>
-            </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Products table */}
+      {/* ── Products Grid ── */}
       <div className="border divide-y" style={{ borderColor: border }}>
-        <div className="hidden md:grid grid-cols-8 gap-2 px-3 py-2 font-mono text-[9px] tracking-[0.15em]" style={{ background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)", color: muted }}>
-          <span className="col-span-2">NAME</span>
-          <span className="col-span-1">CAT</span>
+        <div className="hidden md:grid grid-cols-[1fr_80px_70px_60px_80px_100px] gap-2 px-3 py-2 font-mono text-[9px] tracking-[0.15em]" style={{ background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)", color: muted }}>
+          <span>PRODUCT</span>
+          <span>CATEGORY</span>
           <span>PRICE</span>
           <span>STOCK</span>
           <span>STATUS</span>
-          <span className="col-span-2">ACTIONS</span>
+          <span className="text-right">ACTIONS</span>
         </div>
 
-        {loading ? <Loader /> : products.map(p => (
-          <div key={p.id}>
-            <div className="flex flex-wrap gap-2 px-3 py-3 items-center md:grid md:grid-cols-8">
-              <span className="w-full md:w-auto md:col-span-2 font-mono text-[10px] font-medium truncate" style={{ color: fg }}>
-                {editingId === p.id
-                  ? <input value={editVals.name} onChange={e => setEditVals(p2 => ({ ...p2, name: e.target.value }))} className="w-full bg-transparent border-b font-mono text-[10px] outline-none" style={{ borderColor: muted, color: fg }} />
-                  : <>{p.name} {p.tags?.includes("hidden") && <span className="text-[8px] text-red-400 ml-1">HIDDEN</span>}</>}
-              </span>
-              <span className="col-span-1 font-mono text-[9px] uppercase truncate" style={{ color: muted }}>{p.category}</span>
-
-              {editingId === p.id ? (
-                <>
-                  <input value={editVals.price} onChange={e => setEditVals(p2 => ({ ...p2, price: e.target.value }))} className="bg-transparent border px-1 py-0.5 font-mono text-[10px] outline-none w-16" style={{ borderColor: muted, color: fg }} />
-                  <input value={editVals.stock} onChange={e => setEditVals(p2 => ({ ...p2, stock: e.target.value }))} className="bg-transparent border px-1 py-0.5 font-mono text-[10px] outline-none w-14" style={{ borderColor: muted, color: fg }} />
-                  <span className="font-mono text-[9px]" style={{ color: muted }}>—</span>
-                  <div className="col-span-2 flex gap-1">
-                    <button onClick={() => saveEdit(p.id)} disabled={saving} className="p-1.5 border" style={{ borderColor: accent, color: accent }}><Check size={11} /></button>
-                    <button onClick={() => setEditingId(null)} className="p-1.5 border" style={{ borderColor: border, color: muted }}><X size={11} /></button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <span className="font-mono text-[10px]" style={{ color: fg }}>${p.price}</span>
-                  <span className="font-mono text-[10px]" style={{ color: fg }}>{p.stock}</span>
-                  <StockBadge status={p.status} />
-                  <div className="col-span-2 flex gap-1">
-                    <button onClick={() => startEdit(p)} className="p-1.5 hover:opacity-60 transition-opacity" style={{ color: muted }}><Edit3 size={12} /></button>
-                    <button onClick={() => handleDelete(p.id, p.name)} disabled={deletingId === p.id} className="p-1.5 hover:text-red-400 transition-colors disabled:opacity-40" style={{ color: muted }}><Trash2 size={12} /></button>
-                  </div>
-                </>
-              )}
-            </div>
-            {/* Expanded edit panel */}
-            <AnimatePresence>
-              {editingId === p.id && (
-                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden border-t" style={{ borderColor: border }}>
-                  <div className="p-4 space-y-3" style={{ background: isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)" }}>
-                    <div className="grid grid-cols-2 gap-3">
-                      <AdminInput label="NAME" value={editVals.name} onChange={v => setEditVals(p2 => ({ ...p2, name: v }))} />
-                      <AdminInput label="PRICE ($)" value={editVals.price} onChange={v => setEditVals(p2 => ({ ...p2, price: v }))} type="number" />
-                      <AdminInput label="STOCK" value={editVals.stock} onChange={v => setEditVals(p2 => ({ ...p2, stock: v }))} type="number" />
-                      <div>
-                        <span className="font-mono text-[9px] tracking-wider block mb-1" style={{ color: muted }}>CATEGORY</span>
-                        <div className="flex gap-1.5 flex-wrap">
-                          {categories.map(c => (
-                            <button key={c} onClick={() => setEditVals(p2 => ({ ...p2, category: c }))}
-                              className="font-mono text-[8px] px-2 py-0.5 border transition-all"
-                              style={{ borderColor: editVals.category === c ? accent : border, color: editVals.category === c ? accent : muted, background: editVals.category === c ? `${accent}15` : "transparent" }}
-                            >
-                              {c.toUpperCase()}
-                            </button>
-                          ))}
-                        </div>
+        {loading ? <Loader /> : products.length === 0 ? <Empty label="No products yet" /> : products.map(p => (
+          <div key={p.id} className="group px-3 py-3 hover:bg-white/[0.02] transition-colors">
+            {/* Mobile card layout */}
+            <div className="flex items-center gap-3 md:grid md:grid-cols-[1fr_80px_70px_60px_80px_100px] md:gap-2 md:items-center">
+              {/* Product name + clickable thumb (for image swap) */}
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                {p.image ? (
+                  <button
+                    onClick={() => {
+                      if (thumbInputRef.current) {
+                        thumbInputRef.current.dataset.productId = p.id;
+                        thumbInputRef.current.click();
+                      }
+                    }}
+                    className="relative w-11 h-11 flex-shrink-0 group/thumb cursor-pointer"
+                    title="Click to replace image"
+                  >
+                    <img src={p.image} alt="" className="w-11 h-11 object-cover border" style={{ borderColor: border }} />
+                    {thumbUploadId === p.id ? (
+                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                        <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: accent }} />
                       </div>
-                    </div>
-                    <AdminInput label="DESCRIPTION" value={editVals.description} onChange={v => setEditVals(p2 => ({ ...p2, description: v }))} placeholder="Strain description…" />
-                    <AdminInput label="TAGS (comma separated)" value={editVals.tags} onChange={v => setEditVals(p2 => ({ ...p2, tags: v }))} placeholder="e.g. popular, featured, in stock, hidden" />
-                    <AdminInput label="IMAGE URL" value={editVals.imageUrl} onChange={v => setEditVals(p2 => ({ ...p2, imageUrl: v }))} placeholder="Cloudinary or external URL" />
-                    <div className="flex items-center gap-4">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" checked={editVals.featured} onChange={e => setEditVals(p2 => ({ ...p2, featured: e.target.checked }))} className="w-3 h-3" />
-                        <span className="font-mono text-[9px] tracking-wider" style={{ color: muted }}>FEATURED</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" checked={editVals.tags.includes("hidden")} onChange={e => {
-                          const curTags = editVals.tags.split(",").map(t => t.trim()).filter(t => t && t !== "hidden");
-                          if (e.target.checked) curTags.push("hidden");
-                          setEditVals(p2 => ({ ...p2, tags: curTags.join(", ") }));
-                        }} className="w-3 h-3" />
-                        <span className="font-mono text-[9px] tracking-wider" style={{ color: muted }}>HIDDEN FROM STORE</span>
-                      </label>
-                    </div>
-                    <div className="flex gap-3 pt-2">
-                      <button onClick={() => saveEdit(p.id)} disabled={saving} className="flex-1 py-2 font-mono text-[10px] tracking-wider disabled:opacity-50" style={{ background: accent, color: accentFg }}>
-                        {saving ? "SAVING..." : "SAVE CHANGES"}
-                      </button>
-                      <button onClick={() => setEditingId(null)} className="px-4 py-2 font-mono text-[10px] border" style={{ borderColor: border, color: muted }}>CANCEL</button>
-                    </div>
+                    ) : (
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center">
+                        <Upload size={12} className="text-white" />
+                      </div>
+                    )}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      if (thumbInputRef.current) {
+                        thumbInputRef.current.dataset.productId = p.id;
+                        thumbInputRef.current.click();
+                      }
+                    }}
+                    className="w-11 h-11 border flex items-center justify-center flex-shrink-0 cursor-pointer hover:opacity-70 transition-opacity"
+                    style={{ borderColor: border }}
+                    title="Click to upload image"
+                  >
+                    {thumbUploadId === p.id ? (
+                      <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: accent }} />
+                    ) : (
+                      <Upload size={12} style={{ color: muted }} />
+                    )}
+                  </button>
+                )}
+                <div className="min-w-0">
+                  <span className="font-mono text-[10px] font-medium truncate block" style={{ color: fg }}>
+                    {p.name}
+                  </span>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    {p.sku && <span className="font-mono text-[8px] tracking-wider" style={{ color: muted }}>{p.sku}</span>}
+                    {p.featured && <Star size={8} className="text-yellow-400 fill-yellow-400" />}
+                    {p.tags?.includes("hidden") && <span className="font-mono text-[7px] text-red-400 tracking-wider border border-red-400/30 px-1 py-px">HIDDEN</span>}
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                </div>
+              </div>
+              {/* Desktop columns — inline editable price & stock */}
+              <span className="hidden md:block font-mono text-[9px] uppercase truncate" style={{ color: muted }}>{p.category}</span>
+              {/* Price — click to edit */}
+              <div className="hidden md:block">
+                {inlineEdit?.id === p.id && inlineEdit.field === "price" ? (
+                  <input
+                    ref={inlineInputRef}
+                    type="number"
+                    value={inlineEdit.value}
+                    onChange={e => setInlineEdit({ ...inlineEdit, value: e.target.value })}
+                    onBlur={saveInlineEdit}
+                    onKeyDown={e => { if (e.key === "Enter") saveInlineEdit(); if (e.key === "Escape") setInlineEdit(null); }}
+                    className="w-full bg-transparent border px-1.5 py-0.5 font-mono text-[10px] font-medium outline-none"
+                    style={{ borderColor: accent, color: fg, width: 60 }}
+                    autoFocus
+                  />
+                ) : (
+                  <button
+                    onClick={() => setInlineEdit({ id: p.id, field: "price", value: String(p.price) })}
+                    className="font-mono text-[10px] font-medium hover:underline cursor-pointer transition-colors"
+                    style={{ color: fg }}
+                    title="Click to edit price"
+                  >
+                    ${p.price}
+                  </button>
+                )}
+              </div>
+              {/* Stock — click to edit */}
+              <div className="hidden md:block">
+                {inlineEdit?.id === p.id && inlineEdit.field === "stock" ? (
+                  <input
+                    ref={inlineInputRef}
+                    type="number"
+                    value={inlineEdit.value}
+                    onChange={e => setInlineEdit({ ...inlineEdit, value: e.target.value })}
+                    onBlur={saveInlineEdit}
+                    onKeyDown={e => { if (e.key === "Enter") saveInlineEdit(); if (e.key === "Escape") setInlineEdit(null); }}
+                    className="w-full bg-transparent border px-1.5 py-0.5 font-mono text-[10px] outline-none"
+                    style={{ borderColor: accent, color: p.stock <= 10 ? "rgb(234,179,8)" : fg, width: 50 }}
+                    autoFocus
+                  />
+                ) : (
+                  <button
+                    onClick={() => setInlineEdit({ id: p.id, field: "stock", value: String(p.stock) })}
+                    className="font-mono text-[10px] hover:underline cursor-pointer transition-colors"
+                    style={{ color: p.stock <= 10 ? "rgb(234,179,8)" : fg }}
+                    title="Click to edit stock"
+                  >
+                    {p.stock}
+                  </button>
+                )}
+              </div>
+              <div className="hidden md:block"><StockBadge status={p.status} /></div>
+              {/* Actions */}
+              <div className="flex gap-1 items-center md:justify-end flex-shrink-0">
+                <span className="md:hidden font-mono text-[10px] font-medium mr-1" style={{ color: fg }}>${p.price}</span>
+                <div className="md:hidden mr-1"><StockBadge status={p.status} /></div>
+                <button onClick={() => openEdit(p)} className="p-1.5 hover:opacity-60 transition-opacity" style={{ color: accent }} title="Edit product">
+                  <Edit3 size={13} />
+                </button>
+                <button onClick={() => handleDelete(p.id, p.name)} disabled={deletingId === p.id} className="p-1.5 hover:text-red-400 transition-colors disabled:opacity-40" style={{ color: muted }} title="Delete product">
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            </div>
           </div>
         ))}
       </div>
@@ -1609,79 +1962,27 @@ function CreateProductForm() {
   );
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// LEADS PANEL
-// ══════════════════════════════════════════════════════════════════════════════
-function LeadsPanel() {
-  const { fg, border, muted, accent } = useTheme();
-  const { session } = useAuth();
-  const [leads, setLeads] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetch("/api/leads", { headers: adminHeaders() })
-      .then(r => r.json())
-      .then(d => { setLeads(d.leads || []); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, []);
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <span className="font-mono text-[10px] tracking-[0.2em]" style={{ color: muted }}>
-          {loading ? "..." : `${leads.length} LEADS`}
-        </span>
-      </div>
-      <div className="border divide-y" style={{ borderColor: border }}>
-        {loading ? <Loader /> : leads.length === 0 ? <Empty label="No leads yet" /> :
-          leads.map((lead, i) => (
-            <div key={i} className="flex items-center justify-between p-3">
-              <div>
-                <p className="font-mono text-[10px] font-bold" style={{ color: fg }}>{lead.email || "—"}</p>
-                <p className="font-mono text-[9px]" style={{ color: muted }}>{lead.phone || "no phone"} · {new Date(lead.created_at).toLocaleDateString()}</p>
-              </div>
-              <span className="font-mono text-[8px] tracking-wider px-2 py-0.5" style={{ background: `${accent}15`, color: accent }}>
-                {(lead.promo_offered || "WELCOME247")}
-              </span>
-            </div>
-          ))}
-      </div>
-    </div>
-  );
-}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SETTINGS PANEL — enhanced with actionable controls
 // ══════════════════════════════════════════════════════════════════════════════
 function SettingsPanel() {
   const { fg, border, muted, accent, accentFg, isDark } = useTheme();
-  const [leads, setLeads] = useState<any[]>([]);
+
   const [orders, setOrders] = useState<any[]>([]);
-  const [exporting, setExporting] = useState(false);
+
   const [exportingOrders, setExportingOrders] = useState(false);
   const [products, setProducts] = useState<NormalizedProduct[]>([]);
 
   useEffect(() => {
-    fetch("/api/leads", { headers: adminHeaders() })
-      .then(r => r.json()).then(d => setLeads(d.leads || [])).catch(() => {});
+
     fetch("/api/orders", { headers: adminHeaders() })
       .then(r => r.json()).then(d => setOrders(d.orders || [])).catch(() => {});
     fetchProducts().then(setProducts);
   }, []);
 
-  const exportLeadsCSV = () => {
-    setExporting(true);
-    const header = "Email,Phone,Promo,Source,Date\n";
-    const rows = leads.map(l =>
-      `"${l.email || ""}","${l.phone || ""}","${l.promo_offered || ""}","${l.source || ""}","${new Date(l.created_at).toLocaleDateString()}"`
-    ).join("\n");
-    const blob = new Blob([header + rows], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `gasclub247_leads_${Date.now()}.csv`; a.click();
-    URL.revokeObjectURL(url);
-    setExporting(false);
-  };
+
 
   const exportOrdersCSV = () => {
     setExportingOrders(true);
@@ -1733,7 +2034,6 @@ function SettingsPanel() {
           {[
             { label: "TOTAL PRODUCTS", value: String(products.length), badge: null },
             { label: "FEATURED PRODUCTS", value: String(featuredCount), badge: null },
-            { label: "CAPTURED LEADS", value: String(leads.length), badge: leads.length > 0 ? "LIVE" : null },
             { label: "TOTAL ORDERS", value: String(orders.length), badge: orders.length > 0 ? "LIVE" : null },
             { label: "PENDING ORDERS", value: String(pendingOrders), badge: pendingOrders > 0 ? "ACTION" : null },
             { label: "TOTAL REVENUE", value: `$${totalRevenue.toFixed(2)}`, badge: null },
@@ -1779,26 +2079,66 @@ function SettingsPanel() {
         </p>
       </div>
 
+      {/* ── Quick Actions ── */}
+      <div>
+        <Label>QUICK ACTIONS</Label>
+        <button
+          onClick={() => { window.location.reload(); }}
+          className="w-full py-3 font-mono text-[10px] tracking-wider border transition-all active:scale-95 mt-2 flex items-center justify-center gap-2"
+          style={{ borderColor: accent, color: accent }}
+        >
+          🔄 REFRESH ALL DATA
+        </button>
+      </div>
+
       {/* ── Data Export ── */}
       <div>
         <Label>DATA EXPORT</Label>
         <div className="grid grid-cols-2 gap-3 mt-2">
-          <button
-            onClick={exportLeadsCSV}
-            disabled={exporting || leads.length === 0}
-            className="py-3 font-mono text-[10px] tracking-wider border transition-all active:scale-95 disabled:opacity-40"
-            style={{ borderColor: accent, color: accent }}
-          >
-            {exporting ? "EXPORTING..." : `📧 EXPORT ${leads.length} LEADS`}
-          </button>
           <button
             onClick={exportOrdersCSV}
             disabled={exportingOrders || orders.length === 0}
             className="py-3 font-mono text-[10px] tracking-wider border transition-all active:scale-95 disabled:opacity-40"
             style={{ borderColor: accent, color: accent }}
           >
-            {exportingOrders ? "EXPORTING..." : `📦 EXPORT ${orders.length} ORDERS`}
+            {exportingOrders ? "EXPORTING..." : `📦 ${orders.length} ORDERS`}
           </button>
+          <button
+            onClick={() => {
+              const header = "ID,SKU,Name,Category,Price,Stock,Status,Featured\n";
+              const rows = products.map(p =>
+                `"${p.id}","${p.sku}","${p.name}","${p.category}",${p.price},${p.stock},"${p.status}",${p.featured}`
+              ).join("\n");
+              const blob = new Blob([header + rows], { type: "text/csv" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url; a.download = `gasclub247_products_${Date.now()}.csv`; a.click();
+              URL.revokeObjectURL(url);
+            }}
+            disabled={products.length === 0}
+            className="py-3 font-mono text-[10px] tracking-wider border transition-all active:scale-95 disabled:opacity-40"
+            style={{ borderColor: accent, color: accent }}
+          >
+            🏷️ {products.length} PRODUCTS
+          </button>
+        </div>
+      </div>
+
+      {/* ── System Info ── */}
+      <div>
+        <Label>SYSTEM INFO</Label>
+        <div className="border divide-y" style={{ borderColor: border, background: isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)" }}>
+          {[
+            { label: "FRAMEWORK", value: "Next.js 16 (Turbopack)" },
+            { label: "DATABASE", value: "Supabase (PostgreSQL)" },
+            { label: "MEDIA CDN", value: "Cloudinary" },
+            { label: "DEPLOYMENT", value: "Vercel" },
+          ].map(item => (
+            <div key={item.label} className="flex items-center justify-between px-4 py-2.5">
+              <span className="font-mono text-[9px] tracking-[0.15em]" style={{ color: muted }}>{item.label}</span>
+              <span className="font-mono text-[9px] font-bold" style={{ color: fg }}>{item.value}</span>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -1814,13 +2154,13 @@ function SettingsPanel() {
           </div>
           <p className="font-mono text-[9px] leading-relaxed" style={{ color: muted }}>
             {getAdminToken()
-              ? "JWT session active. Admin token stored in localStorage. For security, rotate your admin passkey regularly via environment variables."
+              ? "JWT session active. Admin token stored for this tab only. Closing the tab requires re-authentication. Rotate your admin passkey regularly via environment variables."
               : "No admin session token detected. Re-authenticate via the admin passkey to regain access to protected API endpoints."
             }
           </p>
         </div>
         <button
-          onClick={() => { localStorage.removeItem("gc247_session"); localStorage.removeItem("gc247_admin"); window.location.href = "/?admin"; }}
+          onClick={() => { sessionStorage.removeItem("gc247_session"); sessionStorage.removeItem("gc247_admin"); localStorage.removeItem("gc247_admin"); localStorage.removeItem("gc247_session"); window.location.href = "/"; }}
           className="w-full mt-3 py-3 font-mono text-[10px] tracking-wider border transition-all active:scale-95"
           style={{ borderColor: "rgba(239,68,68,0.3)", color: "rgb(239,68,68)" }}
         >

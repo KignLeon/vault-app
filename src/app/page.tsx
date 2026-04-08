@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { GasclubLogo, GasclubWordmark, GasclubFooterLogo } from "@/components/ui/gasclub-logo";
 import { Globe } from "@/components/ui/cobe-globe";
-import { Lock, ArrowRight, Shield } from "lucide-react";
+import { Lock, ArrowRight, Shield, ChevronRight } from "lucide-react";
 
 const globeMarkers = [
   { id: "sf", location: [37.7595, -122.4367] as [number, number], label: "San Francisco" },
@@ -22,22 +22,22 @@ const globeArcs = [
   { id: "a3", from: [41.8781, -87.6298] as [number, number], to: [33.749, -84.388] as [number, number], label: "CHI → ATL" },
 ];
 
-export default function AccessPage() {
+export default function WelcomePage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [adminCode, setAdminCode] = useState("");
   const [adminError, setAdminError] = useState("");
   const [entering, setEntering] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
 
-  // If ?admin is in the URL, show admin login. Otherwise redirect straight to /home.
-  const isAdminMode = searchParams.get("admin") !== null;
+  const accentColor = "hsl(270, 70%, 65%)";
 
-  useEffect(() => {
-    if (!isAdminMode) {
-      router.replace("/home");
-    }
-  }, [isAdminMode, router]);
+  // ── User enters the site ────────────────────────────────────────────────────
+  const handleEnter = useCallback(() => {
+    setEntering(true);
+    setTimeout(() => router.push("/home"), 600);
+  }, [router]);
 
+  // ── Admin passkey verification ──────────────────────────────────────────────
   const handleAdminAccess = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = adminCode.trim();
@@ -51,9 +51,9 @@ export default function AccessPage() {
       const data = await res.json();
       if (data.success) {
         if (data.session?.access_token) {
-          try { localStorage.setItem("gc247_session", JSON.stringify(data.session)); } catch {}
+          try { sessionStorage.setItem("gc247_session", JSON.stringify(data.session)); } catch {}
         }
-        try { localStorage.setItem("gc247_admin", "true"); } catch {}
+        try { sessionStorage.setItem("gc247_admin", "true"); } catch {}
         setEntering(true);
         setTimeout(() => router.push("/admin"), 800);
         return;
@@ -65,17 +65,6 @@ export default function AccessPage() {
       setTimeout(() => setAdminError(""), 2000);
     }
   }, [adminCode, router]);
-
-  const accentColor = "hsl(270, 70%, 65%)";
-
-  // Non-admin visitors get redirected — show nothing
-  if (!isAdminMode) {
-    return (
-      <div className="min-h-[100dvh] bg-black flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-      </div>
-    );
-  }
 
   return (
     <div className="relative flex flex-col items-center justify-center min-h-[100dvh] bg-black text-white overflow-hidden">
@@ -98,10 +87,22 @@ export default function AccessPage() {
         </div>
       </div>
 
+      {/* Subtle grid pattern */}
+      <div
+        className="absolute inset-0 pointer-events-none opacity-[0.03]"
+        style={{
+          backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)
+          `,
+          backgroundSize: "40px 40px",
+        }}
+      />
+
       <AnimatePresence mode="wait">
         {!entering ? (
           <motion.div
-            key="access"
+            key="welcome"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
@@ -119,76 +120,116 @@ export default function AccessPage() {
               <GasclubWordmark className="text-white/70" accentColor={accentColor} size="large" />
             </motion.div>
 
-            {/* Admin Header */}
+            {/* Welcome Header */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
-              className="flex gap-0 border border-white/10 w-full"
+              className="text-center space-y-1.5"
             >
-              <div
-                className="flex-1 flex items-center justify-center gap-1.5 py-3 font-mono text-[10px] tracking-[0.2em] text-black"
-                style={{ background: accentColor }}
-              >
-                <Shield size={10} />
-                ADMIN ACCESS
-              </div>
+              <p className="font-mono text-[10px] tracking-[0.3em] text-white/40">
+                PREMIUM INDOOR · DIRECT ACCESS
+              </p>
             </motion.div>
 
-            {/* Admin Login Form */}
-            <motion.div
+            {/* ── Main Action: ENTER SITE ── */}
+            <motion.button
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.4 }}
-              className="w-full"
+              transition={{ duration: 0.4, delay: 0.4 }}
+              onClick={handleEnter}
+              className="w-full group relative overflow-hidden"
+              style={{ background: accentColor }}
             >
-              <div className="border border-white/10 bg-black/80 backdrop-blur-xl p-7 space-y-4">
-                <div className="text-center space-y-1.5">
-                  <h2 className="font-mono text-sm tracking-[0.3em] font-bold text-white">ADMIN ACCESS</h2>
-                  <p className="font-mono text-[10px] tracking-wider text-white/40">Restricted entry · Passkey required</p>
-                </div>
-                <form onSubmit={handleAdminAccess} className="space-y-3">
-                  <div className="relative">
-                    <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-                    <input
-                      type="password"
-                      value={adminCode}
-                      onChange={(e) => setAdminCode(e.target.value)}
-                      placeholder="ENTER PASSKEY"
-                      className={`w-full bg-transparent border ${
-                        adminError ? "border-red-500/50" : "border-white/20"
-                      } px-10 py-3 font-mono text-xs tracking-[0.25em] text-white placeholder:text-white/20 outline-none focus:border-white/50 transition-colors`}
-                      autoComplete="off"
-                      autoFocus
-                    />
-                    <button
-                      type="submit"
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-white/40 hover:text-white active:scale-90 transition-all"
-                    >
-                      <ArrowRight size={16} />
-                    </button>
-                  </div>
-                  {adminError && (
-                    <motion.p
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="font-mono text-[10px] tracking-[0.2em] text-red-400/70 text-center"
-                    >
-                      {adminError}
-                    </motion.p>
-                  )}
-                </form>
+              <div className="flex items-center justify-center gap-3 py-4 font-mono text-sm tracking-[0.3em] font-bold text-black transition-all group-hover:gap-4 group-active:scale-[0.98]">
+                ENTER
+                <ChevronRight size={16} className="transition-transform group-hover:translate-x-1" />
               </div>
-            </motion.div>
+              {/* Shimmer effect */}
+              <div
+                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                style={{
+                  background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)",
+                  animation: "shimmer 2s ease-in-out infinite",
+                }}
+              />
+            </motion.button>
 
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.6 }}
-              className="font-mono text-[9px] tracking-[0.3em] text-white/15 text-center"
-            >
-              ADMIN CONTROL PANEL · RESTRICTED ACCESS
-            </motion.p>
+            {/* ── Admin Toggle ── */}
+            <AnimatePresence mode="wait">
+              {!showAdmin ? (
+                <motion.button
+                  key="admin-toggle"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ delay: 0.5 }}
+                  onClick={() => setShowAdmin(true)}
+                  className="flex items-center gap-1.5 font-mono text-[9px] tracking-[0.25em] text-white/20 hover:text-white/40 transition-colors"
+                >
+                  <Shield size={10} />
+                  ADMIN
+                </motion.button>
+              ) : (
+                <motion.div
+                  key="admin-form"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="w-full overflow-hidden"
+                >
+                  <div className="border border-white/10 bg-black/80 backdrop-blur-xl p-5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <Shield size={10} style={{ color: accentColor }} />
+                        <span className="font-mono text-[9px] tracking-[0.2em] text-white/50">ADMIN ACCESS</span>
+                      </div>
+                      <button
+                        onClick={() => { setShowAdmin(false); setAdminError(""); }}
+                        className="font-mono text-[8px] tracking-wider text-white/30 hover:text-white/60 transition-colors"
+                      >
+                        CLOSE
+                      </button>
+                    </div>
+                    <form onSubmit={handleAdminAccess} className="space-y-2">
+                      <div className="relative">
+                        <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                        <input
+                          type="password"
+                          value={adminCode}
+                          onChange={(e) => setAdminCode(e.target.value)}
+                          placeholder="ENTER PASSKEY"
+                          className={`w-full bg-transparent border ${
+                            adminError ? "border-red-500/50" : "border-white/20"
+                          } px-10 py-3 font-mono text-xs tracking-[0.25em] text-white placeholder:text-white/20 outline-none focus:border-white/50 transition-colors`}
+                          autoComplete="off"
+                          autoFocus
+                        />
+                        <button
+                          type="submit"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-white/40 hover:text-white active:scale-90 transition-all"
+                        >
+                          <ArrowRight size={16} />
+                        </button>
+                      </div>
+                      {adminError && (
+                        <motion.p
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className="font-mono text-[10px] tracking-[0.2em] text-red-400/70 text-center"
+                        >
+                          {adminError}
+                        </motion.p>
+                      )}
+                    </form>
+                    <p className="font-mono text-[8px] tracking-wider text-white/15 text-center">
+                      PASSKEY REQUIRED EVERY SESSION
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         ) : (
           <motion.div
@@ -238,6 +279,14 @@ export default function AccessPage() {
           </a>
         </div>
       </div>
+
+      {/* Shimmer keyframes */}
+      <style jsx>{`
+        @keyframes shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+      `}</style>
     </div>
   );
 }

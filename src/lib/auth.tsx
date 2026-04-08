@@ -5,6 +5,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 // ── Public site, admin-only auth ──────────────────────────────────────────────
 // The site is fully public — no access code needed.
 // Admin access is verified server-side via /api/admin/verify.
+// Admin sessions use sessionStorage — closing the tab/browser requires re-auth.
 
 export type UserRole = "guest" | "member" | "admin";
 
@@ -63,10 +64,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<VaultUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // On mount: everyone gets public access. Check if admin session exists.
+  // On mount: check sessionStorage for admin (tab-scoped, not persisted across browser close)
   useEffect(() => {
     try {
-      const isAdmin = localStorage.getItem("gc247_admin") === "true";
+      const isAdmin = sessionStorage.getItem("gc247_admin") === "true";
       setUser(isAdmin ? ADMIN_USER : ANON_USER);
     } catch {
       // Fallback — always public
@@ -87,6 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Admin login — server-side only, no client-side secrets
+  // Uses sessionStorage so admin must re-enter passkey every time they close the tab/browser
   const adminLogin = useCallback(async (passkey: string): Promise<{ success: boolean; error?: string }> => {
     const trimmed = passkey.trim();
 
@@ -99,9 +101,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json();
       if (data.success) {
         if (data.session?.access_token) {
-          try { localStorage.setItem("gc247_session", JSON.stringify(data.session)); } catch {}
+          try { sessionStorage.setItem("gc247_session", JSON.stringify(data.session)); } catch {}
         }
-        try { localStorage.setItem("gc247_admin", "true"); } catch {}
+        try { sessionStorage.setItem("gc247_admin", "true"); } catch {}
         setUser(ADMIN_USER);
         return { success: true };
       }
@@ -113,6 +115,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     try {
+      sessionStorage.removeItem("gc247_admin");
+      sessionStorage.removeItem("gc247_session");
+      // Also clean up any legacy localStorage values
       localStorage.removeItem("gc247_admin");
       localStorage.removeItem("gc247_session");
     } catch {}

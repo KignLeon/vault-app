@@ -615,7 +615,7 @@ export const posts: Post[] = [
     content: "The club is open. Private access only — share the code with people who deserve it. Premium drops, exclusive pricing, direct access. Welcome.",
     author: "GASCLUB247", authorAvatar: "https://randomuser.me/api/portraits/men/32.jpg",
     timestamp: "2026-04-03T14:00:00Z",
-    image: "/gasclub247-live-post.png",
+    image: productCardUrl("IMG_2200_ffrtyy"),
   },
   {
     id: "post2", type: "promo", pinned: false,

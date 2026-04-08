@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { GasclubNavLogo } from "./gasclub-logo";
 import { cn } from "@/lib/utils";
-import { Home, Package, ShoppingCart, Shield, Sun, Moon, ShoppingBag, LogOut, Check, Palette, X } from "lucide-react";
+import { Home, Package, ShoppingCart, Shield, Sun, Moon, ShoppingBag, LogOut, Check, Palette, X, Settings } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useTheme, COLOR_PROFILES } from "@/lib/theme";
 import { Slider } from "@/components/ui/slider";
@@ -18,6 +18,7 @@ function getTabs(isAdmin: boolean) {
     { label: "FEED", href: "/home", icon: Home },
     { label: "INVENTORY", href: "/inventory", icon: Package },
     { label: "ORDERS", href: "/orders", icon: ShoppingCart },
+    { label: "SETTINGS", href: "/settings", icon: Settings },
   ];
   if (isAdmin) {
     tabs.push({ label: "ADMIN", href: "/admin", icon: Shield });
@@ -84,7 +85,7 @@ export function GasclubNav() {
           {/* Admin logout — only for admins */}
           {isAdmin && (
             <button
-              onClick={() => logout()}
+              onClick={() => { logout(); window.location.href = "/"; }}
               className="p-2 rounded-full transition-all active:scale-90 nav-action-btn"
               style={{ color: fg }}
               aria-label="Sign out"

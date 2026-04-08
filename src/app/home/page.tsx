@@ -269,14 +269,30 @@ function BrandPost() {
         </div>
       </div>
 
-      {/* Brand Image */}
-      <div className="w-full" style={{ borderColor: border, backgroundColor: "#000", aspectRatio: "1 / 1" }}>
+      {/* Brand Image — Hero overlay style */}
+      <div className="w-full relative overflow-hidden" style={{ aspectRatio: "1 / 1" }}>
         <img
-          src="/gc247-brand-drop.svg"
+          src={heroUrl("IMG_2200_ffrtyy")}
           alt="GASCLUB247 — Private Inventory Now Live"
           className="w-full h-full object-cover"
           loading="eager"
         />
+        {/* Gradient overlay */}
+        <div className="absolute inset-0" style={{
+          background: "linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.85) 100%)"
+        }} />
+        {/* Brand text overlay */}
+        <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-6">
+          <p className="font-mono text-[8px] sm:text-[9px] tracking-[0.35em] uppercase mb-1 text-white/60">
+            PREMIUM INDOOR · DIRECT ACCESS
+          </p>
+          <h3 className="font-mono text-lg sm:text-xl font-black tracking-[0.1em] text-white leading-tight">
+            GASCLUB247
+          </h3>
+          <p className="font-mono text-[10px] tracking-[0.15em] text-white/70 mt-1">
+            gasclub247.com
+          </p>
+        </div>
       </div>
 
       {/* Caption */}

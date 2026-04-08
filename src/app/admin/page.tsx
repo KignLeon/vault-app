@@ -67,18 +67,20 @@ function adminHeaders(): Record<string, string> {
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
   const { fg, border, isDark, muted, accent, accentFg } = useTheme();
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, loading } = useAuth();
 
-  const tabs: { id: AdminTab; label: string; icon: typeof Package }[] = [
-    { id: "overview",   label: "OVERVIEW",   icon: TrendingUp },
-    { id: "orders",     label: "ORDERS",     icon: ShoppingCart },
-    { id: "inventory",  label: "INVENTORY",  icon: Package },
-    { id: "community",  label: "FEED",       icon: FileText },
-    { id: "users",      label: "USERS",      icon: Users },
-    { id: "settings",   label: "SETTINGS",   icon: Settings },
-  ];
+  // Wait for auth to hydrate from sessionStorage before gating
+  if (loading) {
+    return (
+      <AppShell>
+        <div className="flex flex-col items-center justify-center min-h-[50vh]">
+          <div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${muted}40`, borderTopColor: muted }} />
+        </div>
+      </AppShell>
+    );
+  }
 
-  if (user && !isAdmin) {
+  if (!isAdmin) {
     return (
       <AppShell>
         <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
@@ -88,6 +90,15 @@ export default function AdminPage() {
       </AppShell>
     );
   }
+
+  const tabs: { id: AdminTab; label: string; icon: typeof Package }[] = [
+    { id: "overview",   label: "OVERVIEW",   icon: TrendingUp },
+    { id: "orders",     label: "ORDERS",     icon: ShoppingCart },
+    { id: "inventory",  label: "INVENTORY",  icon: Package },
+    { id: "community",  label: "FEED",       icon: FileText },
+    { id: "users",      label: "USERS",      icon: Users },
+    { id: "settings",   label: "SETTINGS",   icon: Settings },
+  ];
 
   return (
     <AppShell>

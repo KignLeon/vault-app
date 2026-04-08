@@ -55,7 +55,7 @@ export default function WelcomePage() {
         }
         try { sessionStorage.setItem("gc247_admin", "true"); } catch {}
         setEntering(true);
-        setTimeout(() => router.push("/admin"), 800);
+        setTimeout(() => router.push("/admin"), 1200);
         return;
       }
       setAdminError(data.error || "INVALID PASSKEY");

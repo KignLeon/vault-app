@@ -13,6 +13,7 @@ export interface ColorProfile {
 }
 
 export const COLOR_PROFILES: ColorProfile[] = [
+  { name: "Crimson",    hue: 0,   saturation: 78,  hue2: 350, saturation2: 65, emoji: "🔴" },
   { name: "Midnight",   hue: 220, saturation: 70,  hue2: 250, saturation2: 60, emoji: "🌙" },
   { name: "Sunset",     hue: 25,  saturation: 90,  hue2: 350, saturation2: 75, emoji: "🌅" },
   { name: "Ocean",      hue: 195, saturation: 85,  hue2: 210, saturation2: 70, emoji: "🌊" },
@@ -25,7 +26,7 @@ export const COLOR_PROFILES: ColorProfile[] = [
   { name: "Carbon",     hue: 0,   saturation: 0,   hue2: 0,   saturation2: 0,  emoji: "🖤" },
 ];
 
-const DEFAULT_PROFILE = COLOR_PROFILES[0]; // Midnight
+const DEFAULT_PROFILE = COLOR_PROFILES[0]; // Crimson (red for user side)
 
 // ---- WCAG CONTRAST UTILITIES ----
 // Converts HSL → approximate sRGB → relative luminance for WCAG contrast checks

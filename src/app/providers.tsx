@@ -8,7 +8,7 @@ import { CommentsProvider } from "@/lib/comments";
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <ThemeProvider defaultBrightness={0}>
+      <ThemeProvider defaultBrightness={100}>
         <CartProvider>
           <CommentsProvider>{children}</CommentsProvider>
         </CartProvider>

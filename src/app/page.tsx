@@ -34,8 +34,8 @@ export default function WelcomePage() {
   // ── User enters the site ────────────────────────────────────────────────────
   const handleEnter = useCallback(() => {
     setEntering(true);
-    setTimeout(() => router.push("/home"), 600);
-  }, [router]);
+    setTimeout(() => { window.location.href = "/home"; }, 600);
+  }, []);
 
   // ── Admin passkey verification ──────────────────────────────────────────────
   const handleAdminAccess = useCallback(async (e: React.FormEvent) => {
@@ -55,7 +55,7 @@ export default function WelcomePage() {
         }
         try { sessionStorage.setItem("gc247_admin", "true"); } catch {}
         setEntering(true);
-        setTimeout(() => router.push("/admin"), 1200);
+        setTimeout(() => { window.location.href = "/admin"; }, 1200);
         return;
       }
       setAdminError(data.error || "INVALID PASSKEY");

@@ -120,8 +120,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Also clean up any legacy localStorage values
       localStorage.removeItem("gc247_admin");
       localStorage.removeItem("gc247_session");
+      // Reset theme flags so next session gets fresh defaults
+      localStorage.removeItem("gc247_admin_theme_set");
+      localStorage.removeItem("gc247_brightness");
+      localStorage.removeItem("gc247_color_profile");
     } catch {}
-    // After admin logout, user becomes public member again (not kicked out)
+    // After logout, user becomes public member again
     setUser(ANON_USER);
   }, []);
 

@@ -66,8 +66,20 @@ function adminHeaders(): Record<string, string> {
 // ── Admin Shell ────────────────────────────────────────────────────────────────
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
-  const { fg, border, isDark, muted, accent, accentFg } = useTheme();
+  const { fg, border, isDark, muted, accent, accentFg, setBrightness, setColorProfile } = useTheme();
   const { user, isAdmin, loading } = useAuth();
+
+  // Auto-apply admin theme (Midnight / dark) on first admin visit
+  useEffect(() => {
+    try {
+      const hasAdminTheme = localStorage.getItem("gc247_admin_theme_set");
+      if (!hasAdminTheme && isAdmin) {
+        setBrightness(0);
+        setColorProfile("Midnight");
+        localStorage.setItem("gc247_admin_theme_set", "true");
+      }
+    } catch {}
+  }, [isAdmin, setBrightness, setColorProfile]);
 
   // Wait for auth to hydrate from sessionStorage before gating
   if (loading) {

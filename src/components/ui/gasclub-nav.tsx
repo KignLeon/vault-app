@@ -82,17 +82,15 @@ export function GasclubNav() {
           {/* Lead modal collapsed icon */}
           <LeadCaptureModal />
 
-          {/* Admin logout — only for admins */}
-          {isAdmin && (
-            <button
-              onClick={() => { logout(); window.location.href = "/"; }}
-              className="p-2 rounded-full transition-all active:scale-90 nav-action-btn"
-              style={{ color: fg }}
-              aria-label="Sign out"
-            >
-              <LogOut size={15} />
-            </button>
-          )}
+          {/* Logout — takes everyone back to entry screen */}
+          <button
+            onClick={() => { logout(); window.location.href = "/"; }}
+            className="p-2 rounded-full transition-all active:scale-90 nav-action-btn"
+            style={{ color: fg }}
+            aria-label="Sign out"
+          >
+            <LogOut size={15} />
+          </button>
         </div>
       </nav>
 

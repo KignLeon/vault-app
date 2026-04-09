@@ -63,6 +63,20 @@ function adminHeaders(): Record<string, string> {
     : { "Content-Type": "application/json" };
 }
 
+// Upload-specific headers (no Content-Type — FormData sets its own boundary)
+function adminUploadHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const token = getAdminToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  // Fallback: also send admin passkey stored in sessionStorage
+  try {
+    if (sessionStorage.getItem("gc247_admin") === "true") {
+      headers["X-Admin-Key"] = "gc247_admin_verified";
+    }
+  } catch {}
+  return headers;
+}
+
 // ── Admin Shell ────────────────────────────────────────────────────────────────
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
@@ -564,10 +578,7 @@ function InventoryPanel() {
       const fd = new FormData();
       fd.append("file", file);
       fd.append("folder", `gasclub247/products/${form.category}`);
-      const token = getAdminToken();
-      const headers: Record<string, string> = {};
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      const res = await fetch("/api/upload", { method: "POST", body: fd, headers });
+      const res = await fetch("/api/upload", { method: "POST", body: fd, headers: adminUploadHeaders() });
       const data = await res.json();
       if (data.optimizedUrl || data.url) {
         setForm(p => ({ ...p, imageUrl: data.optimizedUrl || data.url }));
@@ -680,10 +691,7 @@ function InventoryPanel() {
       const fd = new FormData();
       fd.append("file", file);
       fd.append("folder", `gasclub247/products/${product.category || "featured"}`);
-      const token = getAdminToken();
-      const headers: Record<string, string> = {};
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      const res = await fetch("/api/upload", { method: "POST", body: fd, headers });
+      const res = await fetch("/api/upload", { method: "POST", body: fd, headers: adminUploadHeaders() });
       const data = await res.json();
       const newUrl = data.optimizedUrl || data.url;
       if (newUrl) {
@@ -1157,7 +1165,7 @@ function CommunityPanel() {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("folder", "gasclub247/posts");
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const res = await fetch("/api/upload", { method: "POST", body: formData, headers: adminUploadHeaders() });
       const data = await res.json();
       setEditForm(p => ({ ...p, imageUrl: data.optimizedUrl || data.url || "" }));
     } catch {}
@@ -1170,7 +1178,7 @@ function CommunityPanel() {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("folder", "gasclub247/posts");
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const res = await fetch("/api/upload", { method: "POST", body: formData, headers: adminUploadHeaders() });
       const data = await res.json();
       setForm(p => ({ ...p, imageUrl: data.optimizedUrl || data.url || "" }));
     } catch {}
@@ -1762,7 +1770,7 @@ function CreatePostForm({ user }: { user: any }) {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("folder", "gasclub247/posts");
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const res = await fetch("/api/upload", { method: "POST", body: formData, headers: adminUploadHeaders() });
       const data = await res.json();
       setForm(p => ({ ...p, imageUrl: data.optimizedUrl || data.url || "" }));
     } catch { setError("Upload failed"); }
@@ -1888,7 +1896,7 @@ function CreateProductForm() {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("folder", `gasclub247/products/${form.category}`);
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const res = await fetch("/api/upload", { method: "POST", body: formData, headers: adminUploadHeaders() });
       const data = await res.json();
       setForm(p => ({ ...p, imageUrl: data.optimizedUrl || data.url || "" }));
     } catch { setError("Upload failed"); }

@@ -447,87 +447,224 @@ function OrdersPanel() {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// IMAGE UPLOAD COMPONENT — Drag & Drop + Click to Upload
+// MULTI-IMAGE GALLERY — Instagram-Style · Max 10 · Drag-and-Drop · Reorder
 // ══════════════════════════════════════════════════════════════════════════════
-function ImageUploadZone({
-  imageUrl, onUpload, onClear, uploading, label = "PRODUCT IMAGE",
+const MAX_PRODUCT_IMAGES = 10;
+const ACCEPTED_IMAGE_TYPES = ".jpg,.jpeg,.png,.webp,.gif,.heic,.heif";
+
+function MultiImageGallery({
+  images,
+  onImagesChange,
+  uploading,
+  uploadingCount,
+  onUploadFiles,
+  label = "PRODUCT IMAGES",
 }: {
-  imageUrl: string;
-  onUpload: (file: File) => void;
-  onClear: () => void;
+  images: string[];
+  onImagesChange: (imgs: string[]) => void;
   uploading: boolean;
+  uploadingCount: number;
+  onUploadFiles: (files: File[]) => void;
   label?: string;
 }) {
   const { fg, border, muted, accent, isDark } = useTheme();
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
 
+  const remaining = MAX_PRODUCT_IMAGES - images.length;
+
+  // ── Drag-and-drop files from desktop ──
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file && file.type.startsWith("image/")) onUpload(file);
+    const files = Array.from(e.dataTransfer.files).filter(
+      f => f.type.startsWith("image/") || f.name.match(/\.(heic|heif)$/i)
+    );
+    if (files.length > 0) onUploadFiles(files.slice(0, remaining));
   };
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>) => { e.preventDefault(); setDragging(true); };
   const handleDragLeave = () => setDragging(false);
 
+  // ── Reorder images via drag ──
+  const handleReorderStart = (idx: number) => setDragIdx(idx);
+  const handleReorderOver = (idx: number) => { if (dragIdx !== null && dragIdx !== idx) setDragOverIdx(idx); };
+  const handleReorderEnd = () => {
+    if (dragIdx !== null && dragOverIdx !== null && dragIdx !== dragOverIdx) {
+      const newImages = [...images];
+      const [moved] = newImages.splice(dragIdx, 1);
+      newImages.splice(dragOverIdx, 0, moved);
+      onImagesChange(newImages);
+    }
+    setDragIdx(null);
+    setDragOverIdx(null);
+  };
+
+  // ── Remove single image ──
+  const removeImage = (idx: number) => {
+    onImagesChange(images.filter((_, i) => i !== idx));
+  };
+
+  // ── File input handler ──
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) onUploadFiles(files.slice(0, remaining));
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
   return (
     <div>
-      <span className="font-mono text-[9px] tracking-[0.2em] block mb-2" style={{ color: muted }}>{label}</span>
-      {imageUrl ? (
-        <div className="relative group">
-          <img
-            src={imageUrl}
-            alt="Preview"
-            className="w-full aspect-square object-cover border"
-            style={{ borderColor: border, maxHeight: 200 }}
-          />
-          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+      {/* Header with counter */}
+      <div className="flex items-center justify-between mb-2">
+        <span className="font-mono text-[9px] tracking-[0.2em]" style={{ color: muted }}>{label}</span>
+        <span
+          className="font-mono text-[9px] tracking-wider px-2 py-0.5"
+          style={{
+            color: images.length >= MAX_PRODUCT_IMAGES ? "rgb(239,68,68)" : accent,
+            background: images.length >= MAX_PRODUCT_IMAGES ? "rgba(239,68,68,0.1)" : `${accent}15`,
+          }}
+        >
+          {images.length}/{MAX_PRODUCT_IMAGES}
+        </span>
+      </div>
+
+      {/* Image Grid — Instagram style 3-column */}
+      {images.length > 0 && (
+        <div className="grid grid-cols-3 gap-1.5 mb-2">
+          {images.map((url, idx) => (
+            <div
+              key={`${url}-${idx}`}
+              draggable
+              onDragStart={() => handleReorderStart(idx)}
+              onDragOver={(e) => { e.preventDefault(); handleReorderOver(idx); }}
+              onDragEnd={handleReorderEnd}
+              className="relative group aspect-square cursor-grab active:cursor-grabbing"
+              style={{
+                opacity: dragIdx === idx ? 0.4 : 1,
+                transform: dragOverIdx === idx ? "scale(1.05)" : "scale(1)",
+                transition: "transform 0.15s, opacity 0.15s",
+              }}
+            >
+              <img
+                src={url}
+                alt={`Image ${idx + 1}`}
+                className="w-full h-full object-cover border"
+                style={{ borderColor: idx === 0 ? accent : border }}
+              />
+              {/* Cover badge */}
+              {idx === 0 && (
+                <div
+                  className="absolute top-1 left-1 font-mono text-[7px] tracking-wider px-1.5 py-0.5"
+                  style={{ background: accent, color: "#000" }}
+                >
+                  COVER
+                </div>
+              )}
+              {/* Hover overlay with remove */}
+              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <button
+                  onClick={(e) => { e.stopPropagation(); removeImage(idx); }}
+                  className="w-8 h-8 rounded-full bg-red-500/90 flex items-center justify-center hover:bg-red-500 transition-colors"
+                  title="Remove image"
+                >
+                  <X size={14} color="#fff" />
+                </button>
+              </div>
+              {/* Index badge */}
+              <div
+                className="absolute bottom-1 right-1 font-mono text-[8px] w-5 h-5 flex items-center justify-center"
+                style={{ background: "rgba(0,0,0,0.7)", color: "#fff" }}
+              >
+                {idx + 1}
+              </div>
+            </div>
+          ))}
+
+          {/* Upload placeholder cells for remaining slots */}
+          {remaining > 0 && !uploading && (
             <button
               onClick={() => fileRef.current?.click()}
-              className="px-3 py-1.5 font-mono text-[9px] tracking-wider border border-white/30 text-white hover:bg-white/10 transition-colors"
+              className="aspect-square border-2 border-dashed flex flex-col items-center justify-center gap-1.5 transition-all hover:border-solid"
+              style={{ borderColor: border, color: muted }}
             >
-              REPLACE
+              <Plus size={18} />
+              <span className="font-mono text-[7px] tracking-wider">ADD</span>
             </button>
-            <button
-              onClick={onClear}
-              className="px-3 py-1.5 font-mono text-[9px] tracking-wider border border-red-400/50 text-red-400 hover:bg-red-400/10 transition-colors"
+          )}
+
+          {/* Upload progress placeholders */}
+          {uploading && Array.from({ length: uploadingCount }).map((_, i) => (
+            <div
+              key={`uploading-${i}`}
+              className="aspect-square border flex items-center justify-center"
+              style={{ borderColor: accent, background: `${accent}08` }}
             >
-              REMOVE
-            </button>
-          </div>
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) onUpload(f); }} />
+              <div className="flex flex-col items-center gap-1.5">
+                <div
+                  className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin"
+                  style={{ borderColor: `${accent}40`, borderTopColor: accent }}
+                />
+                <span className="font-mono text-[7px] tracking-wider" style={{ color: accent }}>UPLOADING</span>
+              </div>
+            </div>
+          ))}
         </div>
-      ) : (
+      )}
+
+      {/* Drop zone — shown when no images or when there's room */}
+      {images.length < MAX_PRODUCT_IMAGES && (
         <div
           onDrop={handleDrop}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onClick={() => !uploading && fileRef.current?.click()}
-          className="border-2 border-dashed cursor-pointer transition-all flex flex-col items-center justify-center gap-3 py-8"
+          className={`border-2 border-dashed cursor-pointer transition-all flex flex-col items-center justify-center gap-2 ${
+            images.length === 0 ? "py-10" : "py-4"
+          }`}
           style={{
             borderColor: dragging ? accent : border,
             background: dragging ? `${accent}10` : (isDark ? "rgba(255,255,255,0.015)" : "rgba(0,0,0,0.01)"),
           }}
         >
-          {uploading ? (
+          {uploading && images.length === 0 ? (
             <>
               <div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${accent}40`, borderTopColor: accent }} />
-              <span className="font-mono text-[9px] tracking-wider" style={{ color: accent }}>UPLOADING...</span>
+              <span className="font-mono text-[9px] tracking-wider" style={{ color: accent }}>UPLOADING {uploadingCount} IMAGE{uploadingCount > 1 ? "S" : ""}...</span>
             </>
           ) : (
             <>
-              <Upload size={20} style={{ color: muted }} />
+              <Upload size={images.length === 0 ? 24 : 16} style={{ color: muted }} />
               <div className="text-center">
-                <p className="font-mono text-[10px] tracking-wider" style={{ color: fg }}>Drop image here or click to upload</p>
-                <p className="font-mono text-[8px] tracking-wider mt-1" style={{ color: muted }}>JPEG, PNG, WebP · Max 10 MB</p>
+                <p className="font-mono text-[10px] tracking-wider" style={{ color: fg }}>
+                  {images.length === 0 ? "Drop images here or tap to upload" : `Add ${remaining} more image${remaining !== 1 ? "s" : ""}`}
+                </p>
+                <p className="font-mono text-[8px] tracking-wider mt-1" style={{ color: muted }}>
+                  JPEG · PNG · WebP · HEIC · Max 10 MB each · Up to {MAX_PRODUCT_IMAGES} images
+                </p>
               </div>
             </>
           )}
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) onUpload(f); }} disabled={uploading} />
         </div>
       )}
+
+      {/* Hint below gallery */}
+      {images.length > 1 && (
+        <p className="font-mono text-[8px] tracking-wider mt-2 flex items-center gap-1" style={{ color: muted }}>
+          <GripVertical size={10} /> Drag to reorder · First image = cover photo
+        </p>
+      )}
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept={ACCEPTED_IMAGE_TYPES}
+        multiple
+        className="hidden"
+        onChange={handleFileSelect}
+        disabled={uploading}
+      />
     </div>
   );
 }
@@ -560,9 +697,10 @@ function InventoryPanel() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
   const [editorId, setEditorId] = useState<string | null>(null);
+  const [uploadingCount, setUploadingCount] = useState(0);
   const [form, setForm] = useState({
     sku: "", name: "", category: "featured", price: "", stock: "",
-    description: "", imageUrl: "", tags: "", featured: false,
+    description: "", imageUrl: "", images: [] as string[], tags: "", featured: false,
   });
   const [formError, setFormError] = useState("");
 
@@ -570,32 +708,77 @@ function InventoryPanel() {
 
   useEffect(() => { fetchProducts().then(d => { setProducts(d); setLoading(false); }); }, []);
 
-  // ── Upload handler (works for both create + edit) ──
-  const handleImageUpload = async (file: File) => {
-    setUploading(true);
-    setFormError("");
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("folder", `gasclub247/products/${form.category}`);
-      const res = await fetch("/api/upload", { method: "POST", body: fd, headers: adminUploadHeaders() });
-      const data = await res.json();
-      if (data.optimizedUrl || data.url) {
-        setForm(p => ({ ...p, imageUrl: data.optimizedUrl || data.url }));
-      } else {
-        setFormError(data.error || "Upload failed");
-      }
-    } catch {
-      setFormError("Image upload failed. Check connection.");
+  // ── Multi-image upload handler (works for both create + edit) ──
+  const handleMultiImageUpload = async (files: File[]) => {
+    const currentCount = form.images.length;
+    const maxNew = MAX_PRODUCT_IMAGES - currentCount;
+    const filesToUpload = files.slice(0, maxNew);
+    if (filesToUpload.length === 0) {
+      setFormError(`Maximum ${MAX_PRODUCT_IMAGES} images allowed.`);
+      return;
     }
+
+    setUploading(true);
+    setUploadingCount(filesToUpload.length);
+    setFormError("");
+
+    const newUrls: string[] = [];
+    const errors: string[] = [];
+
+    // Upload in parallel (max 3 concurrent)
+    const chunks: File[][] = [];
+    for (let i = 0; i < filesToUpload.length; i += 3) {
+      chunks.push(filesToUpload.slice(i, i + 3));
+    }
+
+    for (const chunk of chunks) {
+      const results = await Promise.all(
+        chunk.map(async (file) => {
+          try {
+            const fd = new FormData();
+            fd.append("file", file);
+            fd.append("folder", `gasclub247/products/${form.category}`);
+            const res = await fetch("/api/upload", { method: "POST", body: fd, headers: adminUploadHeaders() });
+            const data = await res.json();
+            if (data.optimizedUrl || data.url) {
+              return { ok: true, url: data.optimizedUrl || data.url };
+            }
+            return { ok: false, error: data.error || "Upload failed" };
+          } catch {
+            return { ok: false, error: `Failed to upload ${file.name}` };
+          }
+        })
+      );
+
+      for (const r of results) {
+        if (r.ok && r.url) newUrls.push(r.url);
+        else if (r.error) errors.push(r.error);
+      }
+    }
+
+    // Update form state with new images
+    setForm(prev => {
+      const updated = [...prev.images, ...newUrls];
+      return {
+        ...prev,
+        images: updated,
+        imageUrl: updated[0] || prev.imageUrl, // first image = cover
+      };
+    });
+
+    if (errors.length > 0) {
+      setFormError(`${newUrls.length} uploaded, ${errors.length} failed: ${errors[0]}`);
+    }
+
     setUploading(false);
+    setUploadingCount(0);
   };
 
   // ── Open modal for new product ──
   const openCreate = () => {
     setModalMode("create");
     setEditorId(null);
-    setForm({ sku: "", name: "", category: "featured", price: "", stock: "", description: "", imageUrl: "", tags: "", featured: false });
+    setForm({ sku: "", name: "", category: "featured", price: "", stock: "", description: "", imageUrl: "", images: [], tags: "", featured: false });
     setFormError("");
     setModalOpen(true);
   };
@@ -604,10 +787,15 @@ function InventoryPanel() {
   const openEdit = (p: NormalizedProduct) => {
     setModalMode("edit");
     setEditorId(p.id);
+    // Build images array: prefer images, fall back to single image
+    const existingImages = (p.images && p.images.length > 0)
+      ? [...p.images]
+      : (p.image ? [p.image] : []);
     setForm({
       sku: p.sku || "", name: p.name, category: p.category || "featured",
       price: String(p.price), stock: String(p.stock),
-      description: p.description || "", imageUrl: p.image || "",
+      description: p.description || "", imageUrl: existingImages[0] || "",
+      images: existingImages,
       tags: (p.tags || []).join(", "), featured: p.featured || false,
     });
     setFormError("");
@@ -621,11 +809,17 @@ function InventoryPanel() {
     setFormError("");
     setSaving(true);
 
+    // First image = cover, entire array = gallery
+    const coverUrl = form.images[0] || form.imageUrl || "";
+    const allImages = form.images.length > 0 ? form.images : (form.imageUrl ? [form.imageUrl] : []);
+
     if (modalMode === "create") {
       const result = await createProduct({
         sku: form.sku, name: form.name, category: form.category,
         price: Number(form.price), stock: Number(form.stock) || 0,
-        description: form.description, imageUrl: form.imageUrl || undefined,
+        description: form.description,
+        imageUrl: coverUrl,
+        images: allImages,
       });
       if (result.success) {
         setModalOpen(false);
@@ -644,14 +838,16 @@ function InventoryPanel() {
         status: isHidden ? "sold-out" : newStatus,
         description: form.description, category: form.category,
         tags: tagArr, featured: form.featured,
-        image_url: form.imageUrl || undefined,
+        image_url: coverUrl,
+        images: allImages,
       });
       setProducts(prev => prev.map(p => p.id === editorId ? {
         ...p, name: form.name, price: Number(form.price), stock: newStock,
         status: (isHidden ? "sold-out" : newStatus) as any,
         description: form.description, category: form.category,
         tags: tagArr, featured: form.featured,
-        image: form.imageUrl || p.image,
+        image: coverUrl,
+        images: allImages,
       } : p));
       setModalOpen(false);
       showToast("Product updated");
@@ -836,13 +1032,14 @@ function InventoryPanel() {
                 <div className="border-t pt-4" style={{ borderColor: border }}>
                   <div className="flex items-center gap-1.5 mb-3">
                     <ImageIcon size={11} style={{ color: accent }} />
-                    <span className="font-mono text-[8px] tracking-[0.25em]" style={{ color: muted }}>PRODUCT MEDIA</span>
+                    <span className="font-mono text-[8px] tracking-[0.25em]" style={{ color: muted }}>PRODUCT GALLERY</span>
                   </div>
-                  <ImageUploadZone
-                    imageUrl={form.imageUrl}
-                    onUpload={handleImageUpload}
-                    onClear={() => setForm(p => ({ ...p, imageUrl: "" }))}
+                  <MultiImageGallery
+                    images={form.images}
+                    onImagesChange={(imgs) => setForm(p => ({ ...p, images: imgs, imageUrl: imgs[0] || "" }))}
                     uploading={uploading}
+                    uploadingCount={uploadingCount}
+                    onUploadFiles={handleMultiImageUpload}
                   />
                 </div>
 

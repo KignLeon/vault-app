@@ -1,6 +1,5 @@
 import { supabase } from "@/lib/supabase";
 import type { DbProduct } from "@/lib/supabase-types";
-import { products as localProducts } from "@/lib/data";
 
 // Re-export DB product type as the universal Product shape
 export type { DbProduct as Product };
@@ -24,9 +23,7 @@ function safeJsonObject<T = any>(val: unknown): T | undefined {
   return undefined;
 }
 
-// ── Convert DB product → legacy-compatible shape ──────────────────────────────
-// The existing UI uses product.image, product.images (array), product.bulk, etc.
-// We normalize from Supabase column names to what the UI expects.
+// ── Convert DB product → UI-compatible shape ──────────────────────────────────
 export function normalizeProduct(p: DbProduct) {
   const images = safeJsonArray<string>(p.images);
   const tags = safeJsonArray<string>(p.tags);
@@ -53,33 +50,8 @@ export function normalizeProduct(p: DbProduct) {
 
 export type NormalizedProduct = ReturnType<typeof normalizeProduct>;
 
-// ── Convert local product data → NormalizedProduct shape ──────────────────────
-function fromLocalProduct(p: typeof localProducts[number]): NormalizedProduct {
-  return {
-    id: p.id,
-    sku: p.sku,
-    name: p.name,
-    category: p.category,
-    price: p.price,
-    stock: p.stock,
-    status: p.status,
-    image: p.image,
-    images: p.images,
-    description: p.description,
-    tags: p.tags,
-    featured: p.featured || false,
-    bulk: p.bulk,
-    viewers: p.viewers || 0,
-    recentOrders: p.recentOrders || 0,
-  };
-}
-
-// ── Get local products instantly (no network) ────────────────────────────────
-export function getLocalProducts(): NormalizedProduct[] {
-  return localProducts.map(fromLocalProduct);
-}
-
-// ── Fetch all products (with local fallback on error only) ────────────────────
+// ── Fetch ALL products from Supabase (the ONLY source of truth) ──────────────
+// No local fallback. If Supabase is down, returns empty array + logs the error.
 export async function fetchProducts(): Promise<NormalizedProduct[]> {
   try {
     const fetchPromise = supabase
@@ -88,27 +60,25 @@ export async function fetchProducts(): Promise<NormalizedProduct[]> {
       .order("created_at", { ascending: false });
 
     const timeoutPromise = new Promise<{ data: null; error: { message: string } }>((resolve) =>
-      setTimeout(() => resolve({ data: null, error: { message: "Supabase query timed out (5s)" } }), 5000)
+      setTimeout(() => resolve({ data: null, error: { message: "Supabase query timed out (8s)" } }), 8000)
     );
 
     const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
 
     if (error) {
-      console.warn("[fetchProducts] Supabase error, using local catalog:", error.message);
-      return localProducts.map(fromLocalProduct);
+      console.error("[fetchProducts] Supabase error:", error.message);
+      return [];
     }
 
-    // If DB returns empty, that IS the real state (admin may have deleted everything).
-    // Only fall back to local data on actual connection/query errors.
     if (!data) {
-      console.warn("[fetchProducts] No data returned, using local catalog");
-      return localProducts.map(fromLocalProduct);
+      console.warn("[fetchProducts] No data returned from Supabase");
+      return [];
     }
 
     return data.map(normalizeProduct);
   } catch (e) {
-    console.warn("[fetchProducts] Fetch failed, using local catalog");
-    return localProducts.map(fromLocalProduct);
+    console.error("[fetchProducts] Exception:", e);
+    return [];
   }
 }
 

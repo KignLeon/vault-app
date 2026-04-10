@@ -6,7 +6,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { ProductCard } from "@/components/ui/product-card";
 import { categories } from "@/lib/data";
 import type { BulkTier } from "@/lib/data";
-import { fetchProducts, getLocalProducts, type NormalizedProduct } from "@/lib/products";
+import { fetchProducts, type NormalizedProduct } from "@/lib/products";
 import { X, Minus, Plus, ShoppingBag, Eye, Flame, MessageCircle, Phone, MapPin, Zap } from "lucide-react";
 import { GasclubLogo } from "@/components/ui/gasclub-logo";
 import { useTheme } from "@/lib/theme";
@@ -17,16 +17,18 @@ export default function InventoryPage() {
   const [selectedProduct, setSelectedProduct] = useState<NormalizedProduct | null>(null);
   const [qty, setQty] = useState(1);
   const [selectedBulk, setSelectedBulk] = useState<BulkTier | null>(null);
-  const [allProducts, setAllProducts] = useState<NormalizedProduct[]>(() => getLocalProducts());
-  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [allProducts, setAllProducts] = useState<NormalizedProduct[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
   const [galleryIndex, setGalleryIndex] = useState(0);
   const { fg, border, isDark, muted, accent, accentFg, accentGlow, surfaceAccent, surfaceAccentFg } = useTheme();
   const { addToCart, setCartOpen } = useCart();
 
-  // Background sync from Supabase (local data already rendered)
+  // Load products from Supabase (the single source of truth)
   useEffect(() => {
+    setLoadingProducts(true);
     fetchProducts().then((data) => {
-      if (data.length > 0) setAllProducts(data);
+      setAllProducts(data);
+      setLoadingProducts(false);
     });
   }, []);
 

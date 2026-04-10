@@ -21,7 +21,8 @@ import type { NormalizedProduct } from "@/lib/products";
 import {
   createProductAction, updateProductAction, deleteProductAction,
   bulkUpdateProductsAction, bulkDeleteProductsAction,
-  createPostAction, updatePostAction, deletePostAction
+  createPostAction, updatePostAction, deletePostAction,
+  seedDatabaseAction, checkDbStatusAction
 } from "@/app/actions/admin";
 import {
   fetchPosts,
@@ -2448,6 +2449,12 @@ function SettingsPanel() {
         </p>
       </div>
 
+      {/* ── Database Management ── */}
+      <div>
+        <Label>DATABASE MANAGEMENT</Label>
+        <DatabaseSeedSection />
+      </div>
+
       {/* ── Quick Actions ── */}
       <div>
         <Label>QUICK ACTIONS</Label>
@@ -2540,3 +2547,64 @@ function SettingsPanel() {
   );
 }
 
+// ── Database Seed Section (for Settings panel) ────────────────────────────────
+function DatabaseSeedSection() {
+  const { fg, border, muted, accent, accentFg, isDark } = useTheme();
+  const [dbCount, setDbCount] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [seeding, setSeeding] = useState(false);
+  const [seedResult, setSeedResult] = useState<string | null>(null);
+
+  useEffect(() => {
+    checkDbStatusAction().then(result => {
+      setDbCount(result.productsInDb);
+      setLoading(false);
+    });
+  }, []);
+
+  const handleSeed = async () => {
+    if (!confirm("This will upsert all catalog products into the database. Existing products with the same SKU will be updated. Continue?")) return;
+    setSeeding(true);
+    setSeedResult(null);
+    const token = getAdminToken();
+    const result = await seedDatabaseAction(token);
+    if (result.success) {
+      setSeedResult(`✅ Seeded ${result.seeded} products successfully`);
+      // Refresh count
+      const status = await checkDbStatusAction();
+      setDbCount(status.productsInDb);
+    } else {
+      setSeedResult(`❌ ${result.error || "Failed to seed"}`);
+    }
+    setSeeding(false);
+  };
+
+  return (
+    <div className="border mt-2 divide-y" style={{ borderColor: border }}>
+      <div className="flex items-center justify-between px-4 py-3">
+        <span className="font-mono text-[9px] tracking-[0.15em]" style={{ color: muted }}>PRODUCTS IN DATABASE</span>
+        <span className="font-mono text-[10px] font-bold" style={{ color: fg }}>
+          {loading ? "..." : (dbCount ?? "ERROR")}
+        </span>
+      </div>
+      <div className="px-4 py-3">
+        <button
+          onClick={handleSeed}
+          disabled={seeding}
+          className="w-full py-3 font-mono text-[10px] tracking-wider border transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
+          style={{ borderColor: accent, color: accent }}
+        >
+          {seeding ? "SEEDING..." : "🌱 SEED/SYNC CATALOG TO DATABASE"}
+        </button>
+        {seedResult && (
+          <p className="font-mono text-[9px] tracking-wider mt-2 text-center" style={{ color: seedResult.startsWith("✅") ? "rgb(34,197,94)" : "rgb(239,68,68)" }}>
+            {seedResult}
+          </p>
+        )}
+        <p className="font-mono text-[8px] tracking-wider mt-2" style={{ color: muted }}>
+          Pushes all products from the built-in catalog into the Supabase database. Existing products (matching SKU) will be updated, new products will be created.
+        </p>
+      </div>
+    </div>
+  );
+}

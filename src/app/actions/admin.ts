@@ -271,3 +271,69 @@ export async function deletePostAction(
   revalidateAll();
   return { success: true };
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SEED DATABASE ACTION
+// ══════════════════════════════════════════════════════════════════════════════
+
+export async function seedDatabaseAction(
+  token: string | null
+): Promise<{ success: boolean; seeded?: number; error?: string }> {
+  if (!(await verifyAdminContext(token))) return { success: false, error: "Unauthorized" };
+
+  // Dynamic import to avoid shipping data.ts to every page bundle
+  const { products: localProducts } = await import("@/lib/data");
+
+  const admin = getAdminClient();
+
+  const rows = localProducts.map((p: any) => ({
+    sku: p.sku,
+    name: p.name,
+    category: p.category,
+    image_url: p.image || "",
+    images: p.images || [],
+    price: p.price,
+    stock: p.stock,
+    status: p.status || "in-stock",
+    description: p.description || "",
+    tags: p.tags || [],
+    featured: p.featured || false,
+    bulk_tiers: p.bulk || null,
+    viewers: p.viewers || Math.floor(Math.random() * 30) + 5,
+    recent_orders: p.recentOrders || Math.floor(Math.random() * 10) + 1,
+  }));
+
+  const { error } = await admin
+    .from("products")
+    .upsert(rows, { onConflict: "sku" });
+
+  if (error) {
+    console.error("[seedDatabaseAction] error:", error);
+    return { success: false, error: error.message };
+  }
+
+  revalidateAll();
+  return { success: true, seeded: rows.length };
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CHECK DB STATUS ACTION
+// ══════════════════════════════════════════════════════════════════════════════
+
+export async function checkDbStatusAction(): Promise<{
+  configured: boolean;
+  productsInDb: number;
+  error?: string;
+}> {
+  try {
+    const admin = getAdminClient();
+    const { count, error } = await admin
+      .from("products")
+      .select("*", { count: "exact", head: true });
+
+    if (error) return { configured: true, productsInDb: 0, error: error.message };
+    return { configured: true, productsInDb: count || 0 };
+  } catch (e: any) {
+    return { configured: false, productsInDb: 0, error: e.message };
+  }
+}

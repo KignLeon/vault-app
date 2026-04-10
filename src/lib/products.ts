@@ -126,7 +126,6 @@ export async function updateProduct(
     stock?: number;
     status?: string;
     image_url?: string;
-    images?: string[];
     name?: string;
     description?: string;
     category?: string;
@@ -134,10 +133,9 @@ export async function updateProduct(
     featured?: boolean;
   }
 ): Promise<{ success: boolean; error?: string }> {
-  // Convert arrays to JSON for Supabase
+  // Convert tags array to JSON if present
   const dbUpdates: Record<string, any> = { ...updates };
   if (dbUpdates.tags) dbUpdates.tags = JSON.stringify(dbUpdates.tags);
-  if (dbUpdates.images) dbUpdates.images = JSON.stringify(dbUpdates.images);
 
   const { error } = await (supabase as any)
     .from("products")

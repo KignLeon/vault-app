@@ -2111,14 +2111,15 @@ function CreatePostForm({ user }: { user: any }) {
   const handleSubmit = async () => {
     if (!form.title || !form.content) { setError("Title and content are required."); return; }
     setSaving(true); setError("");
-    const result = await createPost({
+    const token = getAdminToken();
+    const result = await createPostAction(token, {
       type: form.type, title: form.title, content: form.content,
       authorId: user?.id, authorName: user?.displayName || "GASCLUB247",
       imageUrl: form.imageUrl || undefined, pinned: form.pinned, featured: form.featured,
     });
     if (result.success) {
       setSaved(true);
-      setForm({ type: "update", title: "", content: "", pinned: false, featured: false, imageUrl: "" });
+      setForm({ type: "drop", title: "", content: "", pinned: false, featured: false, imageUrl: "" });
       setTimeout(() => setSaved(false), 3000);
     } else {
       setError(result.error || "Failed to create post.");
@@ -2242,7 +2243,8 @@ function CreateProductForm() {
   const handleSubmit = async () => {
     if (!form.sku || !form.name || !form.price) { setError("SKU, Name, and Price are required."); return; }
     setSaving(true); setError("");
-    const result = await createProduct({
+    const token = getAdminToken();
+    const result = await createProductAction(token, {
       sku: form.sku, name: form.name, category: form.category,
       price: Number(form.price), stock: Number(form.stock) || 0,
       description: form.description, imageUrl: form.imageUrl || undefined,

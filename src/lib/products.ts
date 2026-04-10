@@ -5,10 +5,33 @@ import { products as localProducts } from "@/lib/data";
 // Re-export DB product type as the universal Product shape
 export type { DbProduct as Product };
 
+// ── Safely parse a JSON value that might be a string, array, or null ──────────
+function safeJsonArray<T = any>(val: unknown): T[] {
+  if (Array.isArray(val)) return val as T[];
+  if (typeof val === "string") {
+    try { const parsed = JSON.parse(val); return Array.isArray(parsed) ? parsed : []; } catch { return []; }
+  }
+  return [];
+}
+
+function safeJsonObject<T = any>(val: unknown): T | undefined {
+  if (val === null || val === undefined) return undefined;
+  if (typeof val === "object" && !Array.isArray(val)) return val as T;
+  if (Array.isArray(val)) return val as unknown as T;
+  if (typeof val === "string") {
+    try { return JSON.parse(val) as T; } catch { return undefined; }
+  }
+  return undefined;
+}
+
 // ── Convert DB product → legacy-compatible shape ──────────────────────────────
 // The existing UI uses product.image, product.images (array), product.bulk, etc.
 // We normalize from Supabase column names to what the UI expects.
 export function normalizeProduct(p: DbProduct) {
+  const images = safeJsonArray<string>(p.images);
+  const tags = safeJsonArray<string>(p.tags);
+  const bulk = safeJsonObject<Array<{ label: string; qty: string; price: number }>>(p.bulk_tiers);
+
   return {
     id: p.id,
     sku: p.sku,
@@ -18,11 +41,11 @@ export function normalizeProduct(p: DbProduct) {
     stock: p.stock,
     status: p.status as "in-stock" | "low-stock" | "sold-out",
     image: p.image_url || "",
-    images: (p.images as string[]) || [],
+    images,
     description: p.description,
-    tags: (p.tags as string[]) || [],
+    tags,
     featured: p.featured,
-    bulk: p.bulk_tiers as Array<{ label: string; qty: string; price: number }> | undefined,
+    bulk: Array.isArray(bulk) ? bulk : undefined,
     viewers: p.viewers || 0,
     recentOrders: p.recent_orders || 0,
   };
@@ -56,17 +79,16 @@ export function getLocalProducts(): NormalizedProduct[] {
   return localProducts.map(fromLocalProduct);
 }
 
-// ── Fetch all products (with local fallback) ──────────────────────────────────
+// ── Fetch all products (with local fallback on error only) ────────────────────
 export async function fetchProducts(): Promise<NormalizedProduct[]> {
   try {
-    // Race against a timeout to prevent indefinite hangs
     const fetchPromise = supabase
       .from("products")
       .select("*")
       .order("created_at", { ascending: false });
 
     const timeoutPromise = new Promise<{ data: null; error: { message: string } }>((resolve) =>
-      setTimeout(() => resolve({ data: null, error: { message: "Supabase query timed out (3s)" } }), 3000)
+      setTimeout(() => resolve({ data: null, error: { message: "Supabase query timed out (5s)" } }), 5000)
     );
 
     const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
@@ -76,8 +98,10 @@ export async function fetchProducts(): Promise<NormalizedProduct[]> {
       return localProducts.map(fromLocalProduct);
     }
 
-    if (!data || data.length === 0) {
-      console.warn("[fetchProducts] No products in DB, using local catalog");
+    // If DB returns empty, that IS the real state (admin may have deleted everything).
+    // Only fall back to local data on actual connection/query errors.
+    if (!data) {
+      console.warn("[fetchProducts] No data returned, using local catalog");
       return localProducts.map(fromLocalProduct);
     }
 
@@ -116,34 +140,4 @@ export async function fetchProductById(id: string): Promise<NormalizedProduct | 
 
   if (error || !data) return null;
   return normalizeProduct(data);
-}
-
-// ── Update product (admin only) ────────────────────────────────────────────────
-export async function updateProduct(
-  id: string,
-  updates: {
-    price?: number;
-    stock?: number;
-    status?: string;
-    image_url?: string;
-    images?: string[];
-    name?: string;
-    description?: string;
-    category?: string;
-    tags?: string[];
-    featured?: boolean;
-  }
-): Promise<{ success: boolean; error?: string }> {
-  // Convert tags and images arrays to JSON if present
-  const dbUpdates: Record<string, any> = { ...updates };
-  if (dbUpdates.tags) dbUpdates.tags = JSON.stringify(dbUpdates.tags);
-  if (dbUpdates.images) dbUpdates.images = JSON.stringify(dbUpdates.images);
-
-  const { error } = await (supabase as any)
-    .from("products")
-    .update(dbUpdates)
-    .eq("id", id);
-
-  if (error) return { success: false, error: error.message };
-  return { success: true };
 }

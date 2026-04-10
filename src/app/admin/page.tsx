@@ -16,12 +16,17 @@ import {
   UserCheck, UserX, AlertCircle, Settings, Eye, EyeOff,
   Upload, GripVertical,
 } from "lucide-react";
-import { fetchProducts, updateProduct } from "@/lib/products";
+import { fetchProducts } from "@/lib/products";
 import type { NormalizedProduct } from "@/lib/products";
 import {
-  fetchPosts, createPost, updatePost, deletePost,
+  createProductAction, updateProductAction, deleteProductAction,
+  bulkUpdateProductsAction, bulkDeleteProductsAction,
+  createPostAction, updatePostAction, deletePostAction
+} from "@/app/actions/admin";
+import {
+  fetchPosts,
   fetchPromoCodes, createPromoCode, updatePromoCode, deletePromoCode,
-  fetchAllUsers, updateUserRole, createProduct, deleteProduct,
+  fetchAllUsers, updateUserRole,
   type DbPost,
 } from "@/lib/community";
 
@@ -616,7 +621,7 @@ function MediaGalleryUploader({
               <input
                 ref={el => { fileRefs.current[i] = el; }}
                 type="file"
-                accept={MEDIA_ALLOWED_ALL.join(",")}
+                accept="image/*,video/*"
                 className="hidden"
                 onChange={e => {
                   const f = e.target.files?.[0];
@@ -671,7 +676,7 @@ function ImageUploadZone({
             <button onClick={() => fileRef.current?.click()} className="px-3 py-1.5 font-mono text-[9px] tracking-wider border border-white/30 text-white hover:bg-white/10 transition-colors">REPLACE</button>
             <button onClick={onClear} className="px-3 py-1.5 font-mono text-[9px] tracking-wider border border-red-400/50 text-red-400 hover:bg-red-400/10 transition-colors">REMOVE</button>
           </div>
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = ""; }} />
+          <input ref={fileRef} type="file" accept="image/*,video/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = ""; }} />
         </div>
       ) : (
         <div
@@ -687,7 +692,7 @@ function ImageUploadZone({
           ) : (
             <><Upload size={16} style={{ color: muted }} /><p className="font-mono text-[9px]" style={{ color: fg }}>Drop image or click to upload</p></>
           )}
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = ""; }} disabled={uploading} />
+          <input ref={fileRef} type="file" accept="image/*,video/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = ""; }} disabled={uploading} />
         </div>
       )}
     </div>
@@ -718,6 +723,53 @@ function InventoryPanel() {
   const inlineInputRef = useRef<HTMLInputElement>(null);
   const thumbInputRef = useRef<HTMLInputElement>(null);
   const [thumbUploadId, setThumbUploadId] = useState<string | null>(null);
+
+  // Bulk action state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const toggleSelection = (id: string) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setSelectedIds(newSet);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === products.length && products.length > 0) setSelectedIds(new Set());
+    else setSelectedIds(new Set(products.map(p => p.id)));
+  };
+
+  const handleBulkAction = async (action: "hide" | "sold-out" | "delete") => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Apply action "${action}" to ${selectedIds.size} selected products?`)) return;
+    
+    setSaving(true);
+    const token = getAdminToken();
+    const idsArray = Array.from(selectedIds);
+    
+    if (action === "delete") {
+      await bulkDeleteProductsAction(token, idsArray);
+      setProducts(prev => prev.filter(p => !selectedIds.has(p.id)));
+    } else if (action === "sold-out") {
+      const updates = { stock: 0, status: "sold-out" };
+      await bulkUpdateProductsAction(token, idsArray, updates);
+      setProducts(prev => prev.map(p => selectedIds.has(p.id) ? { ...p, stock: 0, status: "sold-out" as any } : p));
+    } else if (action === "hide") {
+      // Loop individually to preserve other tags
+      for (const id of idsArray) {
+        const p = products.find(prod => prod.id === id);
+        if (p && !p.tags.includes("hidden")) {
+          const newTags = [...p.tags, "hidden"];
+          await updateProductAction(token, id, { tags: newTags });
+        }
+      }
+      setProducts(prev => prev.map(p => selectedIds.has(p.id) && !p.tags.includes("hidden") ? { ...p, tags: [...p.tags, "hidden"] } : p));
+    }
+    
+    setSelectedIds(new Set());
+    setSaving(false);
+    showToast(`Bulk ${action} complete`);
+  };
 
   // Modal state — single modal for both create and edit
   const [modalOpen, setModalOpen] = useState(false);
@@ -829,8 +881,10 @@ function InventoryPanel() {
     const coverUrl = mediaItems[0]?.url || "";
     const allUrls = mediaItems.map(m => m.url);
 
+    const token = getAdminToken();
+
     if (modalMode === "create") {
-      const result = await createProduct({
+      const result = await createProductAction(token, {
         sku: form.sku, name: form.name, category: form.category,
         price: Number(form.price), stock: Number(form.stock) || 0,
         description: form.description, imageUrl: coverUrl || undefined,
@@ -848,7 +902,7 @@ function InventoryPanel() {
       const newStatus = newStock === 0 ? "sold-out" : newStock <= 10 ? "low-stock" : "in-stock";
       const tagArr = form.tags.split(",").map(t => t.trim()).filter(Boolean);
       const isHidden = tagArr.includes("hidden");
-      await updateProduct(editorId, {
+      const result = await updateProductAction(token, editorId, {
         name: form.name, price: Number(form.price), stock: newStock,
         status: isHidden ? "sold-out" : newStatus,
         description: form.description, category: form.category,
@@ -856,16 +910,20 @@ function InventoryPanel() {
         image_url: coverUrl || undefined,
         images: allUrls,
       });
-      setProducts(prev => prev.map(p => p.id === editorId ? {
-        ...p, name: form.name, price: Number(form.price), stock: newStock,
-        status: (isHidden ? "sold-out" : newStatus) as any,
-        description: form.description, category: form.category,
-        tags: tagArr, featured: form.featured,
-        image: coverUrl || p.image,
-        images: allUrls,
-      } : p));
-      setModalOpen(false);
-      showToast("Product updated");
+      if (result.success) {
+        setProducts(prev => prev.map(p => p.id === editorId ? {
+          ...p, name: form.name, price: Number(form.price), stock: newStock,
+          status: (isHidden ? "sold-out" : newStatus) as any,
+          description: form.description, category: form.category,
+          tags: tagArr, featured: form.featured,
+          image: coverUrl || p.image,
+          images: allUrls,
+        } : p));
+        setModalOpen(false);
+        showToast("Product updated");
+      } else {
+        setFormError(result.error || "Failed to update product");
+      }
     }
     setSaving(false);
   };
@@ -887,10 +945,15 @@ function InventoryPanel() {
       updates.status = numVal === 0 ? "sold-out" : numVal <= 10 ? "low-stock" : "in-stock";
     }
 
-    await updateProduct(id, updates);
-    setProducts(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+    const token = getAdminToken();
+    const result = await updateProductAction(token, id, updates);
+    if (result.success) {
+      setProducts(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+      showToast(`${field.charAt(0).toUpperCase() + field.slice(1)} updated`);
+    } else {
+      showToast(result.error || `Failed to update ${field}`, "error");
+    }
     setInlineEdit(null);
-    showToast(`${field.charAt(0).toUpperCase() + field.slice(1)} updated`);
   };
 
   // ── Thumbnail image swap ──
@@ -909,9 +972,14 @@ function InventoryPanel() {
       } else {
         const newUrl = data.optimizedUrl || data.url;
         if (newUrl) {
-          await updateProduct(productId, { image_url: newUrl });
-          setProducts(prev => prev.map(p => p.id === productId ? { ...p, image: newUrl } : p));
-          showToast("Image updated");
+          const token = getAdminToken();
+          const result = await updateProductAction(token, productId, { image_url: newUrl });
+          if (result.success) {
+            setProducts(prev => prev.map(p => p.id === productId ? { ...p, image: newUrl } : p));
+            showToast("Image updated");
+          } else {
+            showToast(result.error || "Failed to save image", "error");
+          }
         } else {
           showToast("Upload returned no URL", "error");
         }
@@ -925,10 +993,15 @@ function InventoryPanel() {
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
     setDeletingId(id);
-    await deleteProduct(id);
-    setProducts(prev => prev.filter(p => p.id !== id));
+    const token = getAdminToken();
+    const result = await deleteProductAction(token, id);
+    if (result.success) {
+      setProducts(prev => prev.filter(p => p.id !== id));
+      showToast(`"${name}" deleted`);
+    } else {
+      showToast(result.error || "Delete failed", "error");
+    }
     setDeletingId(null);
-    showToast(`"${name}" deleted`);
   };
 
   return (
@@ -1162,9 +1235,34 @@ function InventoryPanel() {
         )}
       </AnimatePresence>
 
+      {/* ── Bulk Actions Bar ── */}
+      <AnimatePresence>
+        {selectedIds.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+            className="flex items-center justify-between p-3 border mb-3"
+            style={{ background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)", borderColor: accent }}
+          >
+            <div className="flex items-center gap-3">
+               <span className="font-mono text-[10px] font-bold" style={{ color: fg }}>
+                  {selectedIds.size} SELECTED
+               </span>
+            </div>
+            <div className="flex items-center gap-2">
+               <button onClick={() => handleBulkAction("hide")} className="px-3 py-1.5 border font-mono text-[9px] tracking-wider transition-opacity hover:opacity-70" style={{ borderColor: border, color: fg }}>HIDE</button>
+               <button onClick={() => handleBulkAction("sold-out")} className="px-3 py-1.5 border font-mono text-[9px] tracking-wider transition-opacity hover:opacity-70" style={{ borderColor: border, color: "rgb(234,179,8)" }}>MARK SOLD OUT</button>
+               <button onClick={() => handleBulkAction("delete")} className="px-3 py-1.5 border font-mono text-[9px] tracking-wider transition-opacity hover:opacity-70" style={{ borderColor: 'rgba(239,68,68,0.5)', color: 'rgb(239,68,68)' }}>DELETE</button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ── Products Grid ── */}
       <div className="border divide-y" style={{ borderColor: border }}>
-        <div className="hidden md:grid grid-cols-[1fr_80px_70px_60px_80px_100px] gap-2 px-3 py-2 font-mono text-[9px] tracking-[0.15em]" style={{ background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)", color: muted }}>
+        <div className="hidden md:grid grid-cols-[30px_1fr_80px_70px_60px_80px_100px] gap-2 px-3 py-2 font-mono text-[9px] tracking-[0.15em]" style={{ background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)", color: muted }}>
+          <div className="flex items-center justify-center">
+            <input type="checkbox" checked={selectedIds.size === products.length && products.length > 0} onChange={toggleSelectAll} className="w-3 h-3 accent-current" style={{ accentColor: accent }} />
+          </div>
           <span>PRODUCT</span>
           <span>CATEGORY</span>
           <span>PRICE</span>
@@ -1174,9 +1272,12 @@ function InventoryPanel() {
         </div>
 
         {loading ? <Loader /> : products.length === 0 ? <Empty label="No products yet" /> : products.map(p => (
-          <div key={p.id} className="group px-3 py-3 hover:bg-white/[0.02] transition-colors">
+          <div key={p.id} className="group px-3 py-3 hover:bg-white/[0.02] transition-colors" style={{ background: selectedIds.has(p.id) ? (isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)") : "transparent" }}>
             {/* Mobile card layout */}
-            <div className="flex items-center gap-3 md:grid md:grid-cols-[1fr_80px_70px_60px_80px_100px] md:gap-2 md:items-center">
+            <div className="flex items-center gap-3 md:grid md:grid-cols-[30px_1fr_80px_70px_60px_80px_100px] md:gap-2 md:items-center">
+              <div className="flex items-center justify-center">
+                 <input type="checkbox" checked={selectedIds.has(p.id)} onChange={() => toggleSelection(p.id)} className="w-3 h-3 accent-current" style={{ accentColor: accent }} />
+              </div>
               {/* Product name + clickable thumb (for image swap) */}
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 {p.image ? (
@@ -1322,7 +1423,8 @@ function CommunityPanel() {
   const handleCreate = async () => {
     if (!form.title || !form.content) return;
     setSaving(true);
-    const result = await createPost({
+    const token = getAdminToken();
+    const result = await createPostAction(token, {
       type: form.type, title: form.title, content: form.content,
       authorId: user?.id, authorName: user?.displayName || "GASCLUB247",
       imageUrl: form.imageUrl || undefined, pinned: form.pinned, featured: form.featured,
@@ -1338,19 +1440,22 @@ function CommunityPanel() {
   const handleDelete = async (postId: string) => {
     if (!confirm("Delete this post?")) return;
     setDeletingId(postId);
-    await deletePost(postId);
+    const token = getAdminToken();
+    await deletePostAction(token, postId);
     setPosts(prev => prev.filter(p => p.id !== postId));
     setDeletingId(null);
   };
 
   const handleTogglePin = async (post: DbPost) => {
-    await updatePost(post.id, { pinned: !post.pinned });
+    const token = getAdminToken();
+    await updatePostAction(token, post.id, { pinned: !post.pinned });
     setPosts(prev => prev.map(p => p.id === post.id ? { ...p, pinned: !p.pinned } : p));
   };
 
   const handleToggleVisibility = async (post: DbPost & { hidden?: boolean }) => {
     const nowHidden = !(post as any).hidden;
-    await updatePost(post.id, { hidden: nowHidden } as any);
+    const token = getAdminToken();
+    await updatePostAction(token, post.id, { hidden: nowHidden } as any);
     setPosts(prev => prev.map(p => p.id === post.id ? { ...p, hidden: nowHidden } as any : p));
   };
 
@@ -1361,7 +1466,8 @@ function CommunityPanel() {
 
   const saveEdit = async (postId: string) => {
     setSaving(true);
-    await updatePost(postId, {
+    const token = getAdminToken();
+    await updatePostAction(token, postId, {
       title: editForm.title,
       content: editForm.content,
       image_url: editForm.imageUrl || null,
@@ -1405,8 +1511,8 @@ function CommunityPanel() {
     setUploadingCreate(false);
   };
 
-  const POST_TYPES: DbPost["type"][] = ["announcement", "drop", "update", "media", "review", "promo"];
-  const TYPE_COLORS: Record<string, string> = { announcement: "text-red-400", drop: "text-purple-400", update: "text-blue-400", media: "text-green-400", review: "text-yellow-400", promo: "text-orange-400" };
+  const POST_TYPES: Array<"drop"|"update"|"media"|"review"|"promo"> = ["drop", "update", "media", "review", "promo"];
+  const TYPE_COLORS: Record<string, string> = { drop: "text-purple-400", update: "text-blue-400", media: "text-green-400", review: "text-yellow-400", promo: "text-orange-400" };
 
   return (
     <div className="space-y-5">
@@ -1418,7 +1524,7 @@ function CommunityPanel() {
           className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] tracking-wider"
           style={{ background: accent, color: accentFg }}
         >
-          <Plus size={12} /> NEW POST
+          <Plus size={12} /> NEW DROP
         </button>
       </div>
 
@@ -1429,7 +1535,7 @@ function CommunityPanel() {
             className="border overflow-hidden" style={{ borderColor: accent }}
           >
             <div className="p-4 space-y-3">
-              <Label>NEW POST</Label>
+              <Label>NEW DROP / UPDATE</Label>
 
               {/* Type */}
               <div className="flex gap-2 flex-wrap">
@@ -1462,7 +1568,7 @@ function CommunityPanel() {
                     style={{ borderColor: border, color: muted }}
                   >
                     {uploadingCreate ? "UPLOADING..." : form.imageUrl ? "✅ IMAGE UPLOADED" : "📷 CLICK TO UPLOAD"}
-                    <input type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleCreateImageUpload(f); }} disabled={uploadingCreate} />
+                    <input type="file" accept="image/*,video/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleCreateImageUpload(f); }} disabled={uploadingCreate} />
                   </label>
                 </div>
                 {form.imageUrl && (
@@ -1546,7 +1652,7 @@ function CommunityPanel() {
                         style={{ borderColor: border, color: muted }}
                       >
                         {uploadingEdit ? "UPLOADING..." : "📷 UPLOAD NEW"}
-                        <input type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleEditImageUpload(f); }} disabled={uploadingEdit} />
+                        <input type="file" accept="image/*,video/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleEditImageUpload(f); }} disabled={uploadingEdit} />
                       </label>
                       {editForm.imageUrl && (
                         <button onClick={() => setEditForm(p => ({ ...p, imageUrl: "" }))} className="font-mono text-[8px] hover:text-red-400" style={{ color: muted }}>REMOVE</button>
@@ -1975,14 +2081,14 @@ function CreatePanel() {
 
 function CreatePostForm({ user }: { user: any }) {
   const { fg, border, muted, accent, accentFg, isDark } = useTheme();
-  const [form, setForm] = useState({ type: "update" as "announcement"|"drop"|"update"|"media"|"review"|"promo", title: "", content: "", pinned: false, featured: false, imageUrl: "" });
+  const [form, setForm] = useState({ type: "drop" as "drop"|"update"|"media"|"review"|"promo", title: "", content: "", pinned: false, featured: false, imageUrl: "" });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
 
-  const POST_TYPES: Array<"announcement"|"drop"|"update"|"media"|"review"|"promo"> = ["announcement", "drop", "update", "media", "review", "promo"];
-  const TYPE_COLORS: Record<string, string> = { announcement: "text-red-400", drop: "text-purple-400", update: "text-blue-400", media: "text-green-400", review: "text-yellow-400", promo: "text-orange-400" };
+  const POST_TYPES: Array<"drop"|"update"|"media"|"review"|"promo"> = ["drop", "update", "media", "review", "promo"];
+  const TYPE_COLORS: Record<string, string> = { drop: "text-purple-400", update: "text-blue-400", media: "text-green-400", review: "text-yellow-400", promo: "text-orange-400" };
 
   const handleImageUpload = async (file: File) => {
     setUploading(true);

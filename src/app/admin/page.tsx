@@ -447,10 +447,14 @@ function OrdersPanel() {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// IMAGE UPLOAD COMPONENT — Drag & Drop + Click to Upload (Professional)
+// MEDIA GALLERY UPLOADER — Multi-image + Video support (up to 6 slots)
 // ══════════════════════════════════════════════════════════════════════════════
-const UPLOAD_ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-const UPLOAD_MAX_SIZE = 10 * 1024 * 1024; // 10 MB
+const MEDIA_ALLOWED_IMAGE = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const MEDIA_ALLOWED_VIDEO = ["video/mp4", "video/webm", "video/quicktime"];
+const MEDIA_ALLOWED_ALL = [...MEDIA_ALLOWED_IMAGE, ...MEDIA_ALLOWED_VIDEO];
+const MEDIA_MAX_IMAGE = 10 * 1024 * 1024;
+const MEDIA_MAX_VIDEO = 50 * 1024 * 1024;
+const MAX_MEDIA_SLOTS = 6;
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -458,8 +462,193 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+export interface MediaItem {
+  url: string;
+  type: "image" | "video";
+}
+
+function isVideoUrl(url: string): boolean {
+  return /\.(mp4|webm|mov)(\?|$)/i.test(url) || url.includes("/video/upload/");
+}
+
+function MediaGalleryUploader({
+  mediaItems, onAdd, onRemove, onReorder, uploadingIndex, label = "PRODUCT MEDIA",
+}: {
+  mediaItems: MediaItem[];
+  onAdd: (file: File, slotIndex: number) => void;
+  onRemove: (index: number) => void;
+  onReorder: (from: number, to: number) => void;
+  uploadingIndex: number | null;
+  label?: string;
+}) {
+  const { fg, border, muted, accent, isDark } = useTheme();
+  const fileRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [draggingSlot, setDraggingSlot] = useState<number | null>(null);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const validateFile = (file: File): boolean => {
+    setErrorMsg("");
+    const isVideo = MEDIA_ALLOWED_VIDEO.includes(file.type);
+    const isImage = MEDIA_ALLOWED_IMAGE.includes(file.type);
+    if (!isImage && !isVideo) {
+      setErrorMsg(`Invalid format. Use JPEG, PNG, WebP, GIF, MP4, or WebM.`);
+      return false;
+    }
+    const maxSize = isVideo ? MEDIA_MAX_VIDEO : MEDIA_MAX_IMAGE;
+    if (file.size > maxSize) {
+      setErrorMsg(`File too large (${formatFileSize(file.size)}). Max ${isVideo ? "50 MB" : "10 MB"}.`);
+      return false;
+    }
+    return true;
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>, slotIndex: number) => {
+    e.preventDefault();
+    setDraggingSlot(null);
+    const file = e.dataTransfer.files?.[0];
+    if (file && validateFile(file)) onAdd(file, slotIndex);
+  };
+
+  const slots = Array.from({ length: MAX_MEDIA_SLOTS }, (_, i) => mediaItems[i] || null);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <span className="font-mono text-[9px] tracking-[0.2em]" style={{ color: muted }}>{label}</span>
+        <span className="font-mono text-[8px] tracking-wider" style={{ color: muted }}>
+          {mediaItems.length}/{MAX_MEDIA_SLOTS} SLOTS
+        </span>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        {slots.map((item, i) => {
+          const isUploading = uploadingIndex === i;
+          const isEmpty = !item;
+          const isPrimary = i === 0;
+          const isVid = item ? item.type === "video" : false;
+
+          return (
+            <div key={i} className="relative aspect-square">
+              {item ? (
+                /* ── Filled slot ── */
+                <div className="relative w-full h-full group border overflow-hidden" style={{ borderColor: isPrimary ? accent : border }}>
+                  {isVid ? (
+                    <>
+                      <video src={item.url} className="w-full h-full object-cover" muted playsInline preload="metadata" />
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "rgba(0,0,0,0.6)" }}>
+                          <div className="w-0 h-0 ml-0.5 border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent border-l-[8px] border-l-white" />
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <img src={item.url} alt={`Media ${i + 1}`} className="w-full h-full object-cover" />
+                  )}
+
+                  {/* Primary badge */}
+                  {isPrimary && (
+                    <div className="absolute top-1 left-1 px-1.5 py-0.5 font-mono text-[7px] tracking-wider" style={{ background: accent, color: "#000" }}>
+                      COVER
+                    </div>
+                  )}
+
+                  {/* Video badge */}
+                  {isVid && (
+                    <div className="absolute top-1 right-1 px-1.5 py-0.5 font-mono text-[7px] tracking-wider bg-blue-500 text-white">
+                      VIDEO
+                    </div>
+                  )}
+
+                  {/* Hover overlay */}
+                  <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1.5">
+                    <div className="flex gap-1">
+                      {i > 0 && (
+                        <button onClick={() => onReorder(i, i - 1)} className="px-1.5 py-0.5 font-mono text-[7px] border border-white/30 text-white hover:bg-white/10">
+                          ← 
+                        </button>
+                      )}
+                      {i < mediaItems.length - 1 && (
+                        <button onClick={() => onReorder(i, i + 1)} className="px-1.5 py-0.5 font-mono text-[7px] border border-white/30 text-white hover:bg-white/10">
+                           →
+                        </button>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => onRemove(i)}
+                      className="px-2 py-0.5 font-mono text-[7px] tracking-wider border border-red-400/50 text-red-400 hover:bg-red-400/10 transition-colors"
+                    >
+                      REMOVE
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* ── Empty slot ── */
+                <div
+                  onDrop={e => handleDrop(e, i)}
+                  onDragOver={e => { e.preventDefault(); setDraggingSlot(i); }}
+                  onDragLeave={() => setDraggingSlot(null)}
+                  onClick={() => {
+                    if (!isUploading && i <= mediaItems.length) fileRefs.current[i]?.click();
+                  }}
+                  className={`w-full h-full border-2 border-dashed flex flex-col items-center justify-center gap-1 transition-all ${
+                    i <= mediaItems.length ? "cursor-pointer" : "opacity-30 cursor-not-allowed"
+                  }`}
+                  style={{
+                    borderColor: draggingSlot === i ? accent : border,
+                    background: draggingSlot === i ? `${accent}10` : (isDark ? "rgba(255,255,255,0.015)" : "rgba(0,0,0,0.01)"),
+                  }}
+                >
+                  {isUploading ? (
+                    <>
+                      <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${accent}30`, borderTopColor: accent }} />
+                      <span className="font-mono text-[7px] tracking-wider" style={{ color: accent }}>UPLOADING</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={14} style={{ color: i <= mediaItems.length ? muted : `${muted}40` }} />
+                      <span className="font-mono text-[7px] tracking-wider text-center px-1" style={{ color: i <= mediaItems.length ? muted : `${muted}40` }}>
+                        {isPrimary && mediaItems.length === 0 ? "COVER" : `SLOT ${i + 1}`}
+                      </span>
+                    </>
+                  )}
+                </div>
+              )}
+              <input
+                ref={el => { fileRefs.current[i] = el; }}
+                type="file"
+                accept={MEDIA_ALLOWED_ALL.join(",")}
+                className="hidden"
+                onChange={e => {
+                  const f = e.target.files?.[0];
+                  if (f && validateFile(f)) onAdd(f, i);
+                  e.target.value = "";
+                }}
+              />
+            </div>
+          );
+        })}
+      </div>
+
+      <p className="font-mono text-[8px] tracking-wider mt-2" style={{ color: muted }}>
+        JPEG, PNG, WebP, GIF · Max 10 MB &nbsp;|&nbsp; MP4, WebM · Max 50 MB
+      </p>
+
+      {errorMsg && (
+        <div className="flex items-center gap-2 mt-2 px-3 py-2 border" style={{ borderColor: 'rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.05)' }}>
+          <AlertCircle size={12} className="text-red-400 flex-shrink-0" />
+          <span className="font-mono text-[9px] text-red-400 flex-1">{errorMsg}</span>
+          <button onClick={() => setErrorMsg("")} className="text-red-400 hover:opacity-70 flex-shrink-0">
+            <X size={12} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Keep the single-image ImageUploadZone for feed posts (they don't need multi-media)
 function ImageUploadZone({
-  imageUrl, onUpload, onClear, uploading, label = "PRODUCT IMAGE",
+  imageUrl, onUpload, onClear, uploading, label = "POST IMAGE",
 }: {
   imageUrl: string;
   onUpload: (file: File) => void;
@@ -470,130 +659,35 @@ function ImageUploadZone({
   const { fg, border, muted, accent, isDark } = useTheme();
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
-  const [validationError, setValidationError] = useState("");
-  const [uploadFileName, setUploadFileName] = useState("");
-  const [uploadFileSize, setUploadFileSize] = useState("");
-  const [lastFile, setLastFile] = useState<File | null>(null);
-
-  const validateAndUpload = (file: File) => {
-    setValidationError("");
-    // Validate type
-    if (!UPLOAD_ALLOWED_TYPES.includes(file.type)) {
-      setValidationError(`Invalid format: ${file.type.split("/")[1]?.toUpperCase() || "unknown"}. Use JPEG, PNG, WebP, or GIF.`);
-      return;
-    }
-    // Validate size
-    if (file.size > UPLOAD_MAX_SIZE) {
-      setValidationError(`File too large (${formatFileSize(file.size)}). Maximum is 10 MB.`);
-      return;
-    }
-    setUploadFileName(file.name);
-    setUploadFileSize(formatFileSize(file.size));
-    setLastFile(file);
-    onUpload(file);
-  };
-
-  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) validateAndUpload(file);
-  };
-
-  const handleDragOver = (e: DragEvent<HTMLDivElement>) => { e.preventDefault(); setDragging(true); };
-  const handleDragLeave = () => setDragging(false);
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files?.[0]; if (f) onUpload(f); };
 
   return (
     <div>
       <span className="font-mono text-[9px] tracking-[0.2em] block mb-2" style={{ color: muted }}>{label}</span>
       {imageUrl ? (
         <div className="relative group">
-          <img
-            src={imageUrl}
-            alt="Preview"
-            className="w-full aspect-square object-cover border"
-            style={{ borderColor: border, maxHeight: 200 }}
-          />
-          {/* Success indicator */}
-          <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1" style={{ background: 'rgba(34,197,94,0.9)' }}>
-            <Check size={10} className="text-white" />
-            <span className="font-mono text-[8px] tracking-wider text-white">UPLOADED</span>
-          </div>
+          <img src={imageUrl} alt="Preview" className="w-full aspect-video object-cover border" style={{ borderColor: border, maxHeight: 180 }} />
           <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-            <button
-              onClick={() => fileRef.current?.click()}
-              className="px-3 py-1.5 font-mono text-[9px] tracking-wider border border-white/30 text-white hover:bg-white/10 transition-colors"
-            >
-              REPLACE
-            </button>
-            <button
-              onClick={() => { onClear(); setValidationError(""); setUploadFileName(""); }}
-              className="px-3 py-1.5 font-mono text-[9px] tracking-wider border border-red-400/50 text-red-400 hover:bg-red-400/10 transition-colors"
-            >
-              REMOVE
-            </button>
+            <button onClick={() => fileRef.current?.click()} className="px-3 py-1.5 font-mono text-[9px] tracking-wider border border-white/30 text-white hover:bg-white/10 transition-colors">REPLACE</button>
+            <button onClick={onClear} className="px-3 py-1.5 font-mono text-[9px] tracking-wider border border-red-400/50 text-red-400 hover:bg-red-400/10 transition-colors">REMOVE</button>
           </div>
-          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) validateAndUpload(f); e.target.value = ""; }} />
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = ""; }} />
         </div>
       ) : (
         <div
           onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
+          onDragOver={e => { e.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
           onClick={() => !uploading && fileRef.current?.click()}
-          className="border-2 border-dashed cursor-pointer transition-all flex flex-col items-center justify-center gap-3 py-8"
-          style={{
-            borderColor: validationError ? 'rgb(239,68,68)' : dragging ? accent : border,
-            background: validationError ? 'rgba(239,68,68,0.05)' : dragging ? `${accent}10` : (isDark ? "rgba(255,255,255,0.015)" : "rgba(0,0,0,0.01)"),
-          }}
+          className="border-2 border-dashed cursor-pointer transition-all flex flex-col items-center justify-center gap-2 py-6"
+          style={{ borderColor: dragging ? accent : border, background: dragging ? `${accent}10` : "transparent" }}
         >
           {uploading ? (
-            <>
-              <div className="relative w-10 h-10 flex items-center justify-center">
-                <div className="absolute inset-0 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${accent}30`, borderTopColor: accent }} />
-                <Upload size={14} style={{ color: accent }} />
-              </div>
-              <div className="text-center">
-                <span className="font-mono text-[9px] tracking-wider block" style={{ color: accent }}>UPLOADING...</span>
-                {uploadFileName && (
-                  <span className="font-mono text-[8px] tracking-wider block mt-1" style={{ color: muted }}>
-                    {uploadFileName.length > 25 ? uploadFileName.slice(0, 22) + "..." : uploadFileName} · {uploadFileSize}
-                  </span>
-                )}
-              </div>
-            </>
+            <><div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${accent}40`, borderTopColor: accent }} /><span className="font-mono text-[9px]" style={{ color: accent }}>UPLOADING...</span></>
           ) : (
-            <>
-              <div className="w-10 h-10 border-2 border-dashed rounded-full flex items-center justify-center transition-colors" style={{ borderColor: dragging ? accent : `${muted}40` }}>
-                <Upload size={16} style={{ color: dragging ? accent : muted }} />
-              </div>
-              <div className="text-center">
-                <p className="font-mono text-[10px] tracking-wider" style={{ color: dragging ? accent : fg }}>
-                  {dragging ? "Drop to upload" : "Drop image here or click to upload"}
-                </p>
-                <p className="font-mono text-[8px] tracking-wider mt-1" style={{ color: muted }}>JPEG, PNG, WebP, GIF · Max 10 MB</p>
-              </div>
-            </>
+            <><Upload size={16} style={{ color: muted }} /><p className="font-mono text-[9px]" style={{ color: fg }}>Drop image or click to upload</p></>
           )}
-          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) validateAndUpload(f); e.target.value = ""; }} disabled={uploading} />
-        </div>
-      )}
-      {/* Validation / upload error inline */}
-      {validationError && (
-        <div className="flex items-center gap-2 mt-2 px-3 py-2 border" style={{ borderColor: 'rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.05)' }}>
-          <AlertCircle size={12} className="text-red-400 flex-shrink-0" />
-          <span className="font-mono text-[9px] text-red-400 flex-1">{validationError}</span>
-          {lastFile && (
-            <button
-              onClick={() => { setValidationError(""); validateAndUpload(lastFile); }}
-              className="font-mono text-[8px] tracking-wider px-2 py-0.5 border border-red-400/30 text-red-400 hover:bg-red-400/10 transition-colors flex-shrink-0"
-            >
-              RETRY
-            </button>
-          )}
-          <button onClick={() => setValidationError("")} className="text-red-400 hover:opacity-70 flex-shrink-0">
-            <X size={12} />
-          </button>
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = ""; }} disabled={uploading} />
         </div>
       )}
     </div>
@@ -610,6 +704,7 @@ function InventoryPanel() {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadingSlotIdx, setUploadingSlotIdx] = useState<number | null>(null);
 
   // Toast notification
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -630,17 +725,19 @@ function InventoryPanel() {
   const [editorId, setEditorId] = useState<string | null>(null);
   const [form, setForm] = useState({
     sku: "", name: "", category: "featured", price: "", stock: "",
-    description: "", imageUrl: "", tags: "", featured: false,
+    description: "", tags: "", featured: false,
   });
+  const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [formError, setFormError] = useState("");
 
   const categories = ["featured", "exotic", "candy", "gas", "premium", "prerolls", "smalls"];
 
   useEffect(() => { fetchProducts().then(d => { setProducts(d); setLoading(false); }); }, []);
 
-  // ── Upload handler (works for both create + edit) ──
-  const handleImageUpload = async (file: File) => {
+  // ── Media upload handler (targets a specific slot) ──
+  const handleMediaAdd = async (file: File, slotIndex: number) => {
     setUploading(true);
+    setUploadingSlotIdx(slotIndex);
     setFormError("");
     try {
       const fd = new FormData();
@@ -651,21 +748,48 @@ function InventoryPanel() {
       if (!res.ok) {
         setFormError(data.error || `Upload failed (${res.status})`);
       } else if (data.optimizedUrl || data.url) {
-        setForm(p => ({ ...p, imageUrl: data.optimizedUrl || data.url }));
+        const newItem: MediaItem = {
+          url: data.optimizedUrl || data.url,
+          type: data.mediaType === "video" ? "video" : "image",
+        };
+        setMediaItems(prev => {
+          const updated = [...prev];
+          if (slotIndex < updated.length) {
+            updated[slotIndex] = newItem; // Replace existing
+          } else {
+            updated.push(newItem); // Add new
+          }
+          return updated;
+        });
       } else {
-        setFormError("Upload returned no image URL");
+        setFormError("Upload returned no URL");
       }
     } catch (err: any) {
-      setFormError(err?.message || "Image upload failed. Check connection.");
+      setFormError(err?.message || "Upload failed. Check connection.");
     }
     setUploading(false);
+    setUploadingSlotIdx(null);
+  };
+
+  const handleMediaRemove = (index: number) => {
+    setMediaItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleMediaReorder = (from: number, to: number) => {
+    setMediaItems(prev => {
+      const updated = [...prev];
+      const [item] = updated.splice(from, 1);
+      updated.splice(to, 0, item);
+      return updated;
+    });
   };
 
   // ── Open modal for new product ──
   const openCreate = () => {
     setModalMode("create");
     setEditorId(null);
-    setForm({ sku: "", name: "", category: "featured", price: "", stock: "", description: "", imageUrl: "", tags: "", featured: false });
+    setForm({ sku: "", name: "", category: "featured", price: "", stock: "", description: "", tags: "", featured: false });
+    setMediaItems([]);
     setFormError("");
     setModalOpen(true);
   };
@@ -677,9 +801,20 @@ function InventoryPanel() {
     setForm({
       sku: p.sku || "", name: p.name, category: p.category || "featured",
       price: String(p.price), stock: String(p.stock),
-      description: p.description || "", imageUrl: p.image || "",
+      description: p.description || "",
       tags: (p.tags || []).join(", "), featured: p.featured || false,
     });
+    // Populate media items from existing product
+    const items: MediaItem[] = [];
+    if (p.image) items.push({ url: p.image, type: isVideoUrl(p.image) ? "video" : "image" });
+    if (p.images && p.images.length > 0) {
+      for (const url of p.images) {
+        if (url && url !== p.image) {
+          items.push({ url, type: isVideoUrl(url) ? "video" : "image" });
+        }
+      }
+    }
+    setMediaItems(items);
     setFormError("");
     setModalOpen(true);
   };
@@ -691,11 +826,15 @@ function InventoryPanel() {
     setFormError("");
     setSaving(true);
 
+    const coverUrl = mediaItems[0]?.url || "";
+    const allUrls = mediaItems.map(m => m.url);
+
     if (modalMode === "create") {
       const result = await createProduct({
         sku: form.sku, name: form.name, category: form.category,
         price: Number(form.price), stock: Number(form.stock) || 0,
-        description: form.description, imageUrl: form.imageUrl || undefined,
+        description: form.description, imageUrl: coverUrl || undefined,
+        images: allUrls,
       });
       if (result.success) {
         setModalOpen(false);
@@ -714,14 +853,16 @@ function InventoryPanel() {
         status: isHidden ? "sold-out" : newStatus,
         description: form.description, category: form.category,
         tags: tagArr, featured: form.featured,
-        image_url: form.imageUrl || undefined,
+        image_url: coverUrl || undefined,
+        images: allUrls,
       });
       setProducts(prev => prev.map(p => p.id === editorId ? {
         ...p, name: form.name, price: Number(form.price), stock: newStock,
         status: (isHidden ? "sold-out" : newStatus) as any,
         description: form.description, category: form.category,
         tags: tagArr, featured: form.featured,
-        image: form.imageUrl || p.image,
+        image: coverUrl || p.image,
+        images: allUrls,
       } : p));
       setModalOpen(false);
       showToast("Product updated");
@@ -912,11 +1053,12 @@ function InventoryPanel() {
                     <ImageIcon size={11} style={{ color: accent }} />
                     <span className="font-mono text-[8px] tracking-[0.25em]" style={{ color: muted }}>PRODUCT MEDIA</span>
                   </div>
-                  <ImageUploadZone
-                    imageUrl={form.imageUrl}
-                    onUpload={handleImageUpload}
-                    onClear={() => setForm(p => ({ ...p, imageUrl: "" }))}
-                    uploading={uploading}
+                  <MediaGalleryUploader
+                    mediaItems={mediaItems}
+                    onAdd={handleMediaAdd}
+                    onRemove={handleMediaRemove}
+                    onReorder={handleMediaReorder}
+                    uploadingIndex={uploadingSlotIdx}
                   />
                 </div>
 

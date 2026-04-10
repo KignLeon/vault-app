@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { GasclubLogo, GasclubWordmark, GasclubFooterLogo } from "@/components/ui/gasclub-logo";
 import { Globe } from "@/components/ui/cobe-globe";
-import { Lock, ArrowRight, Shield, ChevronRight } from "lucide-react";
+import { Lock, ArrowRight, Shield, ChevronRight, User } from "lucide-react";
 
 const globeMarkers = [
   { id: "sf", location: [37.7595, -122.4367] as [number, number], label: "San Francisco" },
@@ -22,12 +22,14 @@ const globeArcs = [
   { id: "a3", from: [41.8781, -87.6298] as [number, number], to: [33.749, -84.388] as [number, number], label: "CHI → ATL" },
 ];
 
+type AccessMode = "user" | "admin";
+
 export default function WelcomePage() {
   const router = useRouter();
   const [adminCode, setAdminCode] = useState("");
   const [adminError, setAdminError] = useState("");
   const [entering, setEntering] = useState(false);
-  const [showAdmin, setShowAdmin] = useState(false);
+  const [mode, setMode] = useState<AccessMode>("user");
 
   const accentColor = "hsl(270, 70%, 65%)";
 
@@ -132,67 +134,89 @@ export default function WelcomePage() {
               </p>
             </motion.div>
 
-            {/* ── Main Action: ENTER SITE ── */}
-            <motion.button
+            {/* ── Mode Switcher ── */}
+            <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.4 }}
-              onClick={handleEnter}
-              className="w-full group relative overflow-hidden"
-              style={{ background: accentColor }}
+              transition={{ delay: 0.35 }}
+              className="w-full flex border border-white/10 overflow-hidden"
             >
-              <div className="flex items-center justify-center gap-3 py-4 font-mono text-sm tracking-[0.3em] font-bold text-black transition-all group-hover:gap-4 group-active:scale-[0.98]">
-                ENTER
-                <ChevronRight size={16} className="transition-transform group-hover:translate-x-1" />
-              </div>
-              {/* Shimmer effect */}
-              <div
-                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+              <button
+                onClick={() => setMode("user")}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 font-mono text-[9px] tracking-[0.2em] transition-all duration-200"
                 style={{
-                  background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)",
-                  animation: "shimmer 2s ease-in-out infinite",
+                  background: mode === "user" ? accentColor : "transparent",
+                  color: mode === "user" ? "#000" : "rgba(255,255,255,0.35)",
                 }}
-              />
-            </motion.button>
+              >
+                <User size={11} />
+                BROWSE
+              </button>
+              <button
+                onClick={() => setMode("admin")}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 font-mono text-[9px] tracking-[0.2em] transition-all duration-200 border-l border-white/10"
+                style={{
+                  background: mode === "admin" ? "rgba(255,255,255,0.08)" : "transparent",
+                  color: mode === "admin" ? accentColor : "rgba(255,255,255,0.35)",
+                }}
+              >
+                <Shield size={11} />
+                ADMIN
+              </button>
+            </motion.div>
 
-            {/* ── Admin Toggle ── */}
+            {/* ── Content Area (switches based on mode) ── */}
             <AnimatePresence mode="wait">
-              {!showAdmin ? (
-                <motion.button
-                  key="admin-toggle"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ delay: 0.5 }}
-                  onClick={() => setShowAdmin(true)}
-                  className="flex items-center gap-1.5 font-mono text-[9px] tracking-[0.25em] text-white/20 hover:text-white/40 transition-colors"
-                >
-                  <Shield size={10} />
-                  ADMIN
-                </motion.button>
-              ) : (
+              {mode === "user" ? (
+                /* ═══ USER MODE ═══ */
                 <motion.div
-                  key="admin-form"
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="w-full overflow-hidden"
+                  key="user-mode"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.25 }}
+                  className="w-full"
                 >
-                  <div className="border border-white/10 bg-black/80 backdrop-blur-xl p-5 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <Shield size={10} style={{ color: accentColor }} />
-                        <span className="font-mono text-[9px] tracking-[0.2em] text-white/50">ADMIN ACCESS</span>
-                      </div>
-                      <button
-                        onClick={() => { setShowAdmin(false); setAdminError(""); }}
-                        className="font-mono text-[8px] tracking-wider text-white/30 hover:text-white/60 transition-colors"
-                      >
-                        CLOSE
-                      </button>
+                  <button
+                    onClick={handleEnter}
+                    className="w-full group relative overflow-hidden"
+                    style={{ background: accentColor }}
+                  >
+                    <div className="flex items-center justify-center gap-3 py-4 font-mono text-sm tracking-[0.3em] font-bold text-black transition-all group-hover:gap-4 group-active:scale-[0.98]">
+                      ENTER
+                      <ChevronRight size={16} className="transition-transform group-hover:translate-x-1" />
                     </div>
-                    <form onSubmit={handleAdminAccess} className="space-y-2">
+                    {/* Shimmer effect */}
+                    <div
+                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                      style={{
+                        background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)",
+                        animation: "shimmer 2s ease-in-out infinite",
+                      }}
+                    />
+                  </button>
+                </motion.div>
+              ) : (
+                /* ═══ ADMIN MODE ═══ */
+                <motion.div
+                  key="admin-mode"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.25 }}
+                  className="w-full"
+                >
+                  <div className="border border-white/10 bg-white/[0.03] backdrop-blur-xl">
+                    {/* Admin header */}
+                    <div className="flex items-center gap-2 px-4 pt-4 pb-2">
+                      <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: accentColor }} />
+                      <span className="font-mono text-[9px] tracking-[0.25em]" style={{ color: accentColor }}>
+                        ADMIN ACCESS
+                      </span>
+                    </div>
+
+                    {/* Admin form */}
+                    <form onSubmit={handleAdminAccess} className="px-4 pb-3 space-y-2">
                       <div className="relative">
                         <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
                         <input
@@ -201,14 +225,15 @@ export default function WelcomePage() {
                           onChange={(e) => setAdminCode(e.target.value)}
                           placeholder="ENTER PASSKEY"
                           className={`w-full bg-transparent border ${
-                            adminError ? "border-red-500/50" : "border-white/20"
-                          } px-10 py-3 font-mono text-xs tracking-[0.25em] text-white placeholder:text-white/20 outline-none focus:border-white/50 transition-colors`}
+                            adminError ? "border-red-500/50" : "border-white/15"
+                          } px-10 py-3.5 font-mono text-xs tracking-[0.25em] text-white placeholder:text-white/20 outline-none focus:border-white/40 transition-colors`}
                           autoComplete="off"
                           autoFocus
                         />
                         <button
                           type="submit"
-                          className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-white/40 hover:text-white active:scale-90 transition-all"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 p-2 transition-all active:scale-90"
+                          style={{ color: adminCode.length > 0 ? accentColor : "rgba(255,255,255,0.25)" }}
                         >
                           <ArrowRight size={16} />
                         </button>
@@ -223,9 +248,12 @@ export default function WelcomePage() {
                         </motion.p>
                       )}
                     </form>
-                    <p className="font-mono text-[8px] tracking-wider text-white/15 text-center">
-                      PASSKEY REQUIRED EVERY SESSION
-                    </p>
+
+                    <div className="px-4 pb-4">
+                      <p className="font-mono text-[8px] tracking-wider text-white/15 text-center">
+                        PASSKEY REQUIRED EVERY SESSION
+                      </p>
+                    </div>
                   </div>
                 </motion.div>
               )}

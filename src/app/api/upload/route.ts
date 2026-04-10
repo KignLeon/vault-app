@@ -53,8 +53,11 @@ async function verifyAdmin(req: NextRequest): Promise<boolean> {
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
-const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
+const ALLOWED_MIME_TYPES = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_VIDEO_TYPES];
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10 MB
+const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50 MB
 
 // ── POST /api/upload — Admin-only: Upload image to Cloudinary ────────────────
 export async function POST(req: NextRequest) {
@@ -96,18 +99,22 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. Validate file type
-    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+    const isVideo = ALLOWED_VIDEO_TYPES.includes(file.type);
+    const isImage = ALLOWED_IMAGE_TYPES.includes(file.type);
+    if (!isImage && !isVideo) {
       return NextResponse.json(
-        { error: `Invalid file type "${file.type}". Allowed: JPEG, PNG, WebP, GIF.` },
+        { error: `Invalid file type "${file.type}". Allowed: JPEG, PNG, WebP, GIF, MP4, WebM.` },
         { status: 400 }
       );
     }
 
-    // 5. Validate file size
-    if (file.size > MAX_FILE_SIZE) {
+    // 5. Validate file size (video gets a larger limit)
+    const maxSize = isVideo ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
+    const maxLabel = isVideo ? "50 MB" : "10 MB";
+    if (file.size > maxSize) {
       const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
       return NextResponse.json(
-        { error: `File too large (${sizeMB} MB). Maximum size is 10 MB.` },
+        { error: `File too large (${sizeMB} MB). Maximum for ${isVideo ? "videos" : "images"} is ${maxLabel}.` },
         { status: 400 }
       );
     }
@@ -118,16 +125,21 @@ export async function POST(req: NextRequest) {
     const base64 = buffer.toString("base64");
     const dataUri = `data:${file.type};base64,${base64}`;
 
-    const result = await cloudinary.uploader.upload(dataUri, {
+    const uploadOpts: Record<string, any> = {
       folder,
-      resource_type: "image",
-      transformation: [
-        { quality: "auto", fetch_format: "auto" },
-      ],
-    });
+      resource_type: isVideo ? "video" : "image",
+    };
+    if (isImage) {
+      uploadOpts.transformation = [{ quality: "auto", fetch_format: "auto" }];
+    }
+
+    const result = await cloudinary.uploader.upload(dataUri, uploadOpts);
 
     // 7. Return optimized URL
-    const optimizedUrl = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/f_auto,q_auto,w_800/${result.public_id}`;
+    const mediaType = isVideo ? "video" : "image";
+    const optimizedUrl = isVideo
+      ? result.secure_url
+      : `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/f_auto,q_auto,w_800/${result.public_id}`;
 
     return NextResponse.json({
       success: true,
@@ -137,6 +149,7 @@ export async function POST(req: NextRequest) {
       height: result.height,
       format: result.format,
       bytes: result.bytes,
+      mediaType,
       optimizedUrl,
     });
   } catch (error: any) {

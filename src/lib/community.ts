@@ -304,6 +304,7 @@ export async function createProduct(data: {
   stock: number;
   description: string;
   imageUrl?: string;
+  images?: string[];
   tags?: string[];
   featured?: boolean;
   bulkTiers?: Array<{ label: string; qty: string; price: number }>;
@@ -320,6 +321,7 @@ export async function createProduct(data: {
       stock: data.stock,
       status,
       image_url: data.imageUrl || "",
+      images: JSON.stringify(data.images || []),
       description: data.description,
       tags: JSON.stringify(data.tags || []),
       featured: data.featured || false,

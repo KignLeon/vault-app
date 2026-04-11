@@ -1005,6 +1005,22 @@ function InventoryPanel() {
     setDeletingId(null);
   };
 
+  // ── Toggle product visibility (hidden tag) ──
+  const handleToggleProductVisibility = async (product: NormalizedProduct) => {
+    const isHidden = product.tags?.includes("hidden");
+    const newTags = isHidden
+      ? (product.tags || []).filter(t => t !== "hidden")
+      : [...(product.tags || []), "hidden"];
+    const token = getAdminToken();
+    const result = await updateProductAction(token, product.id, { tags: newTags });
+    if (result.success) {
+      setProducts(prev => prev.map(p => p.id === product.id ? { ...p, tags: newTags } : p));
+      showToast(isHidden ? `"${product.name}" is now visible` : `"${product.name}" hidden from storefront`);
+    } else {
+      showToast(result.error || "Failed to update visibility", "error");
+    }
+  };
+
   return (
     <div className="space-y-5">
       {/* Toast Notification */}
@@ -1392,6 +1408,9 @@ function InventoryPanel() {
                 <div className="md:hidden mr-1"><StockBadge status={p.status} /></div>
                 <button onClick={() => openEdit(p)} className="p-1.5 hover:opacity-60 transition-opacity" style={{ color: accent }} title="Edit product">
                   <Edit3 size={13} />
+                </button>
+                <button onClick={() => handleToggleProductVisibility(p)} className="p-1.5 hover:opacity-60 transition-opacity" style={{ color: p.tags?.includes("hidden") ? "rgb(239,68,68)" : muted }} title={p.tags?.includes("hidden") ? "Show on storefront" : "Hide from storefront"}>
+                  {p.tags?.includes("hidden") ? <EyeOff size={13} /> : <Eye size={13} />}
                 </button>
                 <button onClick={() => handleDelete(p.id, p.name)} disabled={deletingId === p.id} className="p-1.5 hover:text-red-400 transition-colors disabled:opacity-40" style={{ color: muted }} title="Delete product">
                   <Trash2 size={13} />

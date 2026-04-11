@@ -1,4 +1,3 @@
-import { supabase } from "@/lib/supabase";
 import type { DbProduct } from "@/lib/supabase-types";
 
 // Re-export DB product type as the universal Product shape
@@ -50,64 +49,35 @@ export function normalizeProduct(p: DbProduct) {
 
 export type NormalizedProduct = ReturnType<typeof normalizeProduct>;
 
-// ── Fetch ALL products from Supabase (the ONLY source of truth) ──────────────
-// No local fallback. If Supabase is down, returns empty array + logs the error.
+// ── Fetch ALL products via server-side API (bypasses RLS) ─────────────────────
+// Uses /api/products which runs with the service role key.
+// This is the ONLY source of truth for all product data.
 export async function fetchProducts(): Promise<NormalizedProduct[]> {
   try {
-    const fetchPromise = supabase
-      .from("products")
-      .select("*")
-      .order("created_at", { ascending: false });
+    // Determine the base URL for the API call
+    const baseUrl = typeof window !== "undefined"
+      ? "" // Client-side: relative URL
+      : (process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL
+          ? `https://${process.env.VERCEL_URL}`
+          : "http://localhost:3000");
 
-    const timeoutPromise = new Promise<{ data: null; error: { message: string } }>((resolve) =>
-      setTimeout(() => resolve({ data: null, error: { message: "Supabase query timed out (8s)" } }), 8000)
+    const fetchPromise = fetch(`${baseUrl}/api/products`, {
+      cache: "no-store",
+      next: { revalidate: 0 },
+    }).then(async (res) => {
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      const json = await res.json();
+      return json.products || [];
+    });
+
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Product fetch timed out (10s)")), 10000)
     );
 
-    const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
-
-    if (error) {
-      console.error("[fetchProducts] Supabase error:", error.message);
-      return [];
-    }
-
-    if (!data) {
-      console.warn("[fetchProducts] No data returned from Supabase");
-      return [];
-    }
-
-    return data.map(normalizeProduct);
+    const rawProducts = await Promise.race([fetchPromise, timeoutPromise]);
+    return rawProducts.map(normalizeProduct);
   } catch (e) {
-    console.error("[fetchProducts] Exception:", e);
+    console.error("[fetchProducts] Error:", e);
     return [];
   }
-}
-
-// ── Fetch products by category ─────────────────────────────────────────────────
-export async function fetchProductsByCategory(category: string): Promise<NormalizedProduct[]> {
-  if (category === "all") return fetchProducts();
-
-  const { data, error } = await supabase
-    .from("products")
-    .select("*")
-    .eq("category", category)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error("[fetchProductsByCategory] error:", error.message);
-    return [];
-  }
-
-  return (data || []).map(normalizeProduct);
-}
-
-// ── Fetch single product by ID ─────────────────────────────────────────────────
-export async function fetchProductById(id: string): Promise<NormalizedProduct | null> {
-  const { data, error } = await supabase
-    .from("products")
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  if (error || !data) return null;
-  return normalizeProduct(data);
 }

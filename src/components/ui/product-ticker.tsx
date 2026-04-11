@@ -1,25 +1,10 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { InfiniteSlider } from "@/components/ui/infinite-slider";
 import { useTheme } from "@/lib/theme";
-import { products } from "@/lib/data";
+import { fetchProducts, type NormalizedProduct } from "@/lib/products";
 import { Flame, Sparkles, Tag, Zap } from "lucide-react";
-
-// Select featured products + new drops for the ticker
-const tickerProducts = [
-  // Featured items
-  ...products.filter((p) => p.featured).slice(0, 8),
-  // Include some prerolls + smalls for variety
-  ...products.filter((p) => p.category === "prerolls").slice(0, 3),
-  ...products.filter((p) => p.category === "smalls").slice(0, 2),
-  // A couple exotics
-  ...products.filter((p) => p.category === "exotic" && !p.featured).slice(0, 3),
-];
-
-// Deduplicate
-const uniqueTickerProducts = tickerProducts.filter(
-  (p, i, arr) => arr.findIndex((x) => x.id === p.id) === i
-);
 
 // Badge configs
 const BADGE_MAP: Record<string, { icon: typeof Flame; label: string }> = {
@@ -30,6 +15,20 @@ const BADGE_MAP: Record<string, { icon: typeof Flame; label: string }> = {
   premium: { icon: Sparkles, label: "PREMIUM" },
 };
 
+function buildTickerProducts(products: NormalizedProduct[]): NormalizedProduct[] {
+  const items = [
+    // Featured items
+    ...products.filter((p) => p.featured).slice(0, 8),
+    // Include some prerolls + smalls for variety
+    ...products.filter((p) => p.category === "prerolls").slice(0, 3),
+    ...products.filter((p) => p.category === "smalls").slice(0, 2),
+    // A couple exotics
+    ...products.filter((p) => p.category === "exotic" && !p.featured).slice(0, 3),
+  ];
+  // Deduplicate
+  return items.filter((p, i, arr) => arr.findIndex((x) => x.id === p.id) === i);
+}
+
 export function ProductTicker() {
   const {
     fg,
@@ -39,9 +38,19 @@ export function ProductTicker() {
     accent,
     accentFg,
     cardBg,
-    surfaceAccent,
-    brightness,
   } = useTheme();
+
+  const [tickerProducts, setTickerProducts] = useState<NormalizedProduct[]>([]);
+
+  // Fetch from Supabase — the single source of truth
+  useEffect(() => {
+    fetchProducts().then((data) => {
+      setTickerProducts(buildTickerProducts(data));
+    });
+  }, []);
+
+  // Don't render the ticker if there are no products yet
+  if (tickerProducts.length === 0) return null;
 
   return (
     <div
@@ -61,7 +70,7 @@ export function ProductTicker() {
         speed={40}
         speedOnHover={12}
       >
-        {uniqueTickerProducts.map((product) => {
+        {tickerProducts.map((product) => {
           const badge = product.featured
             ? BADGE_MAP.featured
             : BADGE_MAP[product.category];

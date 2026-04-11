@@ -591,13 +591,9 @@ export const products: Product[] = [
 // ---- CATEGORIES ----
 export const categories = [
   { id: "all", label: "ALL", emoji: "" },
-  { id: "featured", label: "TOP SELLERS", emoji: "⭐" },
-  { id: "premium", label: "PREMIUM / INDOOR", emoji: "🧊" },
-  { id: "exotic", label: "EXOTIC", emoji: "🍭" },
-  { id: "candy", label: "CANDY / FRUITY", emoji: "🍬" },
-  { id: "gas", label: "GAS / HEAVY", emoji: "⛽" },
-  { id: "prerolls", label: "PRE-ROLLS", emoji: "🔥" },
-  { id: "smalls", label: "SMALLS", emoji: "📦" },
+  { id: "indoors", label: "INDOORS", emoji: "🧊" },
+  { id: "greenhouse", label: "GREENHOUSE", emoji: "🌿" },
+  { id: "pre-rolls", label: "PRE-ROLLS", emoji: "🔥" },
 ];
 
 // ---- SHIPPING ----

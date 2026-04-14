@@ -6,8 +6,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { useTheme } from "@/lib/theme";
 import { useCart } from "@/lib/cart";
 import { fetchProducts, type NormalizedProduct } from "@/lib/products";
-import { Ticket, Clock, Zap, Tag, ShoppingBag } from "lucide-react";
-import { StockBadge } from "@/components/ui/stock-badge";
+import { Ticket, Clock, Zap, Tag, ShoppingBag, Flame, Crown, Package } from "lucide-react";
 import { GasclubLogo } from "@/components/ui/gasclub-logo";
 
 interface Deal {
@@ -34,8 +33,9 @@ const deals: Deal[] = [
   { id: "d8", title: "ANY 2 STRAINS BUNDLE", description: "Mix and match any two products. Stack with PROMO1.", discount: "SAVE $20", originalPrice: 230, dealPrice: 210, expiresIn: "5 days", type: "member", limited: false },
 ];
 
-const typeBg: Record<string, string> = { flash: "text-red-400", member: "text-green-400", bulk: "text-blue-400" };
-const typeIcon = { flash: Zap, member: Ticket, bulk: Tag };
+const flashDeals = deals.filter(d => d.type === "flash");
+const memberDeals = deals.filter(d => d.type === "member");
+const bulkDeals = deals.filter(d => d.type === "bulk");
 
 export default function DealsPage() {
   const { fg, border, isDark, cardBg, muted, accent, accentFg } = useTheme();
@@ -57,98 +57,227 @@ export default function DealsPage() {
 
   return (
     <AppShell>
-      <div className="pt-6 pb-4 mb-4" style={{ borderBottom: `1px solid ${border}` }}>
-        <div className="flex items-center gap-2 mb-1">
-          <Ticket size={14} style={{ color: fg }} />
-          <h1 className="font-mono text-xs tracking-[0.3em] uppercase" style={{ color: fg }}>EXCLUSIVE DEALS</h1>
+      {/* Page Header */}
+      <div className="pt-6 pb-5 mb-6" style={{ borderBottom: `1px solid ${border}` }}>
+        <div className="flex items-center gap-2.5 mb-2">
+          <Ticket size={16} style={{ color: accent }} />
+          <h1 className="font-mono text-sm tracking-[0.3em] uppercase font-bold" style={{ color: fg }}>EXCLUSIVE DEALS</h1>
         </div>
-        <p className="text-sm" style={{ color: muted }}>Member-only pricing · Bulk tiers · Limited drops</p>
+        <p className="font-mono text-[11px] leading-relaxed" style={{ color: muted }}>
+          Member-only pricing · Bulk tiers · Limited drops · Updated regularly
+        </p>
       </div>
 
-      {/* Deal cards — product-card style grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-        {deals.map((deal, i) => {
-          const Icon = typeIcon[deal.type];
-          const isClaimed = claimed.has(deal.id);
-          const product = deal.productId ? allProducts.find((p: NormalizedProduct) => p.sku === deal.productId) : null;
+      {/* ═══ FLASH DEALS SECTION ═══ */}
+      <section className="mb-10">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-1.5 px-3 py-1.5" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
+            <Zap size={11} className="text-red-400" />
+            <span className="font-mono text-[9px] tracking-[0.25em] font-bold text-red-400">FLASH DEALS</span>
+          </div>
+          <div className="flex-1 h-px" style={{ background: border }} />
+          <span className="font-mono text-[8px] tracking-wider text-red-400 animate-pulse">● LIVE</span>
+        </div>
 
-          return (
-            <motion.div
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+          {flashDeals.map((deal, i) => (
+            <DealCard
               key={deal.id}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.25, delay: i * 0.05 }}
-              className="group border overflow-hidden transition-colors"
-              style={{ borderColor: border, background: cardBg }}
-            >
-              {/* Image — same aspect-square as product cards */}
-              <div className="relative aspect-square w-full overflow-hidden" style={{ background: isDark ? "#111" : "#f5f5f5" }}>
-                {product?.image ? (
-                  <img src={product.image} alt={deal.title} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center gap-2">
-                    <GasclubLogo size={28} style={{ color: `${fg}22` }} accentColor={accent} />
-                    <span className="font-mono text-[8px] tracking-[0.15em] text-center px-2" style={{ color: muted, opacity: 0.6 }}>{deal.title}</span>
-                  </div>
-                )}
+              deal={deal}
+              index={i}
+              allProducts={allProducts}
+              claimed={claimed}
+              onClaim={handleClaim}
+            />
+          ))}
+        </div>
+      </section>
 
-                {/* Badges */}
-                <div className="absolute top-1.5 left-1.5 flex flex-col gap-1">
-                  <span className="font-mono text-[7px] tracking-wider px-1.5 py-0.5 font-bold" style={{ background: accent, color: accentFg }}>
-                    {deal.discount}
-                  </span>
-                  <span className="font-mono text-[7px] tracking-wider px-1.5 py-0.5 flex items-center gap-0.5" style={{ background: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.06)", color: fg }}>
-                    <Icon size={8} /> {deal.type.toUpperCase()}
-                  </span>
-                </div>
+      {/* ═══ MEMBER EXCLUSIVE SECTION ═══ */}
+      <section className="mb-10">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-1.5 px-3 py-1.5" style={{ background: `${accent}10`, border: `1px solid ${accent}25` }}>
+            <Crown size={11} style={{ color: accent }} />
+            <span className="font-mono text-[9px] tracking-[0.25em] font-bold" style={{ color: accent }}>MEMBER EXCLUSIVE</span>
+          </div>
+          <div className="flex-1 h-px" style={{ background: border }} />
+        </div>
 
-                {deal.limited && (
-                  <span className="absolute top-1.5 right-1.5 font-mono text-[7px] tracking-wider px-1.5 py-0.5 text-red-400 font-bold" style={{ background: isDark ? "rgba(255,0,0,0.15)" : "rgba(255,0,0,0.08)" }}>
-                    LIMITED
-                  </span>
-                )}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+          {memberDeals.map((deal, i) => (
+            <DealCard
+              key={deal.id}
+              deal={deal}
+              index={i}
+              allProducts={allProducts}
+              claimed={claimed}
+              onClaim={handleClaim}
+            />
+          ))}
+        </div>
+      </section>
 
-                {/* Quick add */}
-                {deal.productId && !isClaimed && (
-                  <button
-                    onClick={() => handleClaim(deal)}
-                    className="absolute bottom-1.5 right-1.5 w-7 h-7 flex items-center justify-center active:scale-90 transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
-                    style={{ background: fg, color: isDark ? "#000" : "#fff" }}
-                  >
-                    <ShoppingBag size={12} />
-                  </button>
-                )}
-              </div>
+      {/* ═══ BULK PRICING SECTION ═══ */}
+      <section className="mb-10">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-1.5 px-3 py-1.5" style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)" }}>
+            <Package size={11} className="text-blue-400" />
+            <span className="font-mono text-[9px] tracking-[0.25em] font-bold text-blue-400">BULK PRICING</span>
+          </div>
+          <div className="flex-1 h-px" style={{ background: border }} />
+        </div>
 
-              {/* Info */}
-              <div className="p-3">
-                <p className="font-mono text-[10px] tracking-[0.1em] font-bold truncate leading-tight" style={{ color: fg }}>{deal.title}</p>
-                <p className="font-mono text-[8px] tracking-wider mt-1 line-clamp-2 leading-relaxed" style={{ color: muted }}>{deal.description}</p>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+          {bulkDeals.map((deal, i) => (
+            <DealCard
+              key={deal.id}
+              deal={deal}
+              index={i}
+              allProducts={allProducts}
+              claimed={claimed}
+              onClaim={handleClaim}
+            />
+          ))}
+        </div>
+      </section>
 
-                {/* Pricing */}
-                <div className="flex items-baseline gap-1.5 mt-2">
-                  {deal.dealPrice > 0 && (
-                    <>
-                      <span className="font-mono text-[11px] font-bold" style={{ color: fg }}>${deal.dealPrice}</span>
-                      <span className="font-mono text-[9px] line-through" style={{ color: muted }}>${deal.originalPrice}</span>
-                    </>
-                  )}
-                </div>
-
-                {/* Timer */}
-                <div className="flex items-center gap-1 mt-1.5">
-                  <Clock size={8} style={{ color: muted }} />
-                  <span className="font-mono text-[8px] tracking-wider" style={{ color: muted }}>{deal.expiresIn}</span>
-                </div>
-              </div>
-            </motion.div>
-          );
-        })}
-      </div>
-
-      <div className="mt-8 text-center">
-        <span className="font-mono text-[10px] tracking-[0.2em]" style={{ color: muted }}>{deals.length} DEALS AVAILABLE</span>
+      {/* Footer */}
+      <div className="mt-4 mb-8 text-center space-y-2">
+        <span className="font-mono text-[10px] tracking-[0.2em] block" style={{ color: muted }}>
+          {deals.length} DEALS AVAILABLE
+        </span>
+        <p className="font-mono text-[8px] tracking-wider" style={{ color: muted }}>
+          Deals update regularly · Prices subject to availability
+        </p>
       </div>
     </AppShell>
+  );
+}
+
+// ── Deal Card Component ──────────────────────────────────────────────────────
+function DealCard({
+  deal, index, allProducts, claimed, onClaim,
+}: {
+  deal: Deal;
+  index: number;
+  allProducts: NormalizedProduct[];
+  claimed: Set<string>;
+  onClaim: (deal: Deal) => void;
+}) {
+  const { fg, border, isDark, cardBg, muted, accent, accentFg } = useTheme();
+  const isClaimed = claimed.has(deal.id);
+  const product = deal.productId ? allProducts.find((p: NormalizedProduct) => p.sku === deal.productId) : null;
+
+  const typeStyles: Record<string, { bg: string; text: string; icon: typeof Zap }> = {
+    flash: { bg: "rgba(239,68,68,0.12)", text: "text-red-400", icon: Zap },
+    member: { bg: `${accent}12`, text: "", icon: Ticket },
+    bulk: { bg: "rgba(59,130,246,0.12)", text: "text-blue-400", icon: Tag },
+  };
+  const style = typeStyles[deal.type] || typeStyles.member;
+  const Icon = style.icon;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: index * 0.06 }}
+      className="group border overflow-hidden transition-all hover:shadow-lg"
+      style={{ borderColor: border, background: cardBg }}
+    >
+      {/* Image */}
+      <div className="relative aspect-square w-full overflow-hidden" style={{ background: isDark ? "#111" : "#f5f5f5" }}>
+        {product?.image ? (
+          <img src={product.image} alt={deal.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center gap-3" style={{ background: `linear-gradient(135deg, ${isDark ? '#111' : '#f5f5f5'}, ${isDark ? '#1a1a1a' : '#eee'})` }}>
+            <GasclubLogo size={32} style={{ color: `${fg}22` }} accentColor={accent} />
+            <span className="font-mono text-[8px] tracking-[0.15em] text-center px-3 leading-relaxed" style={{ color: muted, opacity: 0.7 }}>{deal.title}</span>
+          </div>
+        )}
+
+        {/* Discount Badge — prominent */}
+        <div className="absolute top-0 left-0 right-0 flex items-start justify-between p-2">
+          <span
+            className="font-mono text-[8px] tracking-wider px-2 py-1 font-black"
+            style={{ background: accent, color: accentFg }}
+          >
+            {deal.discount}
+          </span>
+          {deal.limited && (
+            <span className="font-mono text-[7px] tracking-wider px-1.5 py-0.5 font-bold text-red-400 flex items-center gap-0.5" style={{ background: isDark ? "rgba(255,0,0,0.2)" : "rgba(255,0,0,0.1)" }}>
+              <Flame size={8} /> LIMITED
+            </span>
+          )}
+        </div>
+
+        {/* Type badge */}
+        <div className="absolute bottom-2 left-2">
+          <span className={`font-mono text-[7px] tracking-wider px-1.5 py-0.5 flex items-center gap-0.5 ${style.text}`} style={{ background: style.bg }}>
+            <Icon size={8} /> {deal.type.toUpperCase()}
+          </span>
+        </div>
+
+        {/* Quick add */}
+        {deal.productId && !isClaimed && (
+          <button
+            onClick={() => onClaim(deal)}
+            className="absolute bottom-2 right-2 w-8 h-8 flex items-center justify-center active:scale-90 transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
+            style={{ background: fg, color: isDark ? "#000" : "#fff" }}
+          >
+            <ShoppingBag size={13} />
+          </button>
+        )}
+
+        {/* Shimmer effect for flash deals */}
+        {deal.type === "flash" && (
+          <div
+            className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+            style={{
+              background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%)",
+              animation: "shimmer 3s ease-in-out infinite",
+            }}
+          />
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="p-3 space-y-2">
+        <p className="font-mono text-[10px] tracking-[0.1em] font-bold truncate leading-tight" style={{ color: fg }}>
+          {deal.title}
+        </p>
+        <p className="font-mono text-[8px] tracking-wider line-clamp-2 leading-relaxed" style={{ color: muted }}>
+          {deal.description}
+        </p>
+
+        {/* Pricing */}
+        <div className="flex items-baseline gap-2">
+          {deal.dealPrice > 0 && (
+            <>
+              <span className="font-mono text-[13px] font-black" style={{ color: fg }}>${deal.dealPrice}</span>
+              <span className="font-mono text-[10px] line-through" style={{ color: muted }}>${deal.originalPrice}</span>
+              <span className="font-mono text-[8px] font-bold text-green-400 ml-auto">
+                SAVE ${deal.originalPrice - deal.dealPrice}
+              </span>
+            </>
+          )}
+        </div>
+
+        {/* Timer */}
+        <div className="flex items-center gap-1.5 pt-1" style={{ borderTop: `1px solid ${border}` }}>
+          <Clock size={9} style={{ color: deal.type === "flash" ? "rgb(239,68,68)" : muted }} />
+          <span className="font-mono text-[8px] tracking-wider" style={{ color: deal.type === "flash" ? "rgb(239,68,68)" : muted }}>
+            {deal.expiresIn}
+          </span>
+        </div>
+      </div>
+
+      {/* Shimmer keyframes */}
+      <style jsx>{`
+        @keyframes shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+      `}</style>
+    </motion.div>
   );
 }

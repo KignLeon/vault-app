@@ -34,6 +34,11 @@ export function ProductCard({
   const displayImage = (hovered && hoverImage) ? hoverImage : primaryImage;
   const hasImage = !!primaryImage && !imgError;
 
+  // Detect if URL is a video
+  const isVideoUrl = (url: string) => /\.(mp4|webm|mov)(\?|$)/i.test(url) || url.includes("/video/upload/");
+  const primaryIsVideo = !!primaryImage && isVideoUrl(primaryImage);
+  const displayIsVideo = !!displayImage && isVideoUrl(displayImage);
+
   return (
     <motion.div
       className="group cursor-pointer text-left outline-none w-full"
@@ -42,7 +47,7 @@ export function ProductCard({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* Image */}
+      {/* Image / Video */}
       <div
         className="relative aspect-square w-full overflow-hidden mb-2 border product-img-container"
         style={{ borderColor: border, background: isDark ? "#111" : "#f5f5f5" }}
@@ -50,17 +55,37 @@ export function ProductCard({
       >
         {hasImage ? (
           <>
-            <img
-              src={displayImage || primaryImage}
-              alt={product.name}
-              loading="lazy"
-              decoding="async"
-              onError={() => setImgError(true)}
-              className="absolute inset-0 h-full w-full object-cover select-none transition-opacity duration-300"
-              style={{ opacity: 1 }}
-            />
+            {displayIsVideo ? (
+              <video
+                src={displayImage || primaryImage}
+                muted
+                autoPlay
+                loop
+                playsInline
+                preload="metadata"
+                className="absolute inset-0 h-full w-full object-cover select-none"
+              />
+            ) : (
+              <img
+                src={displayImage || primaryImage}
+                alt={product.name}
+                loading="lazy"
+                decoding="async"
+                onError={() => setImgError(true)}
+                className="absolute inset-0 h-full w-full object-cover select-none transition-opacity duration-300"
+                style={{ opacity: 1 }}
+              />
+            )}
+            {/* Video play icon overlay */}
+            {primaryIsVideo && !hovered && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "rgba(0,0,0,0.5)" }}>
+                  <div className="w-0 h-0 ml-1 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[10px] border-l-white" />
+                </div>
+              </div>
+            )}
             {/* Subtle crossfade overlay on hover */}
-            {hoverImage && (
+            {hoverImage && !displayIsVideo && (
               <img
                 src={hovered ? primaryImage : hoverImage}
                 alt=""
@@ -70,13 +95,13 @@ export function ProductCard({
                 aria-hidden="true"
               />
             )}
-            {/* Image count badge */}
+            {/* Image/media count badge */}
             {product.images && product.images.length > 1 && (
               <div
                 className="absolute bottom-1.5 left-1.5 font-mono text-[7px] tracking-wider px-1.5 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
                 style={{ background: "rgba(0,0,0,0.7)", color: "#fff" }}
               >
-                {product.images.length} PHOTOS
+                {product.images.length} {product.images.some(u => isVideoUrl(u)) ? "MEDIA" : "PHOTOS"}
               </div>
             )}
           </>

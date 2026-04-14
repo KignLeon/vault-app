@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { GasclubNavLogo } from "./gasclub-logo";
 import { cn } from "@/lib/utils";
-import { Home, Package, ShoppingCart, Shield, Sun, Moon, ShoppingBag, LogOut, Check, Palette, X, Settings } from "lucide-react";
+import { Package, ShoppingCart, Shield, Sun, Moon, ShoppingBag, LogOut, Check, Palette, X, Settings, Ticket } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useTheme, COLOR_PROFILES } from "@/lib/theme";
 import { Slider } from "@/components/ui/slider";
@@ -15,8 +15,8 @@ import { LeadCaptureModal } from "./lead-capture-modal";
 
 function getTabs(isAdmin: boolean) {
   const tabs = [
-    { label: "FEED", href: "/home", icon: Home },
     { label: "INVENTORY", href: "/inventory", icon: Package },
+    { label: "DEALS", href: "/deals", icon: Ticket },
     { label: "ORDERS", href: "/orders", icon: ShoppingCart },
     { label: "SETTINGS", href: "/settings", icon: Settings },
   ];
@@ -45,7 +45,7 @@ export function GasclubNav() {
         }}
       >
         {/* Logo — fills the branding area with minimal padding */}
-        <Link href="/home" className="flex items-center py-2 -my-2 overflow-visible">
+        <Link href="/inventory" className="flex items-center py-2 -my-2 overflow-visible">
           <GasclubNavLogo isDark={isDark} brightness={brightness} />
         </Link>
 

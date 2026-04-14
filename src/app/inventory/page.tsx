@@ -171,16 +171,31 @@ export default function InventoryPage() {
                   : selectedProduct.image ? [selectedProduct.image] : [];
                 const hasGallery = galleryImages.length > 0;
                 const currentImg = galleryImages[galleryIndex] || galleryImages[0];
+                const isVideoUrl = (url: string) => /\.(mp4|webm|mov)(\?|$)/i.test(url) || url.includes("/video/upload/");
+                const currentIsVideo = currentImg && isVideoUrl(currentImg);
 
                 return (
                   <div className="relative">
                     <div className="aspect-square w-full overflow-hidden" style={{ background: isDark ? "#111" : "#f5f5f5" }}>
                       {hasGallery ? (
-                        <img
-                          src={currentImg}
-                          alt={selectedProduct.name}
-                          className="w-full h-full object-cover transition-opacity duration-300"
-                        />
+                        currentIsVideo ? (
+                          <video
+                            key={currentImg}
+                            src={currentImg}
+                            controls
+                            muted
+                            autoPlay
+                            playsInline
+                            preload="metadata"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <img
+                            src={currentImg}
+                            alt={selectedProduct.name}
+                            className="w-full h-full object-cover transition-opacity duration-300"
+                          />
+                        )
                       ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center gap-3">
                           <GasclubLogo size={48} style={{ color: border }} accentColor={accent} />
@@ -221,19 +236,33 @@ export default function InventoryPage() {
                     {/* Thumbnail strip */}
                     {galleryImages.length > 1 && (
                       <div className="flex gap-1 p-2 overflow-x-auto no-scroll-bar" style={{ background: isDark ? "#0a0a0a" : "#f0f0f0" }}>
-                        {galleryImages.map((img, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => setGalleryIndex(idx)}
-                            className="w-12 h-12 flex-shrink-0 overflow-hidden border-2 transition-all"
-                            style={{
-                              borderColor: idx === galleryIndex ? accent : "transparent",
-                              opacity: idx === galleryIndex ? 1 : 0.5,
-                            }}
-                          >
-                            <img src={img} alt="" className="w-full h-full object-cover" />
-                          </button>
-                        ))}
+                        {galleryImages.map((img, idx) => {
+                          const thumbIsVideo = isVideoUrl(img);
+                          return (
+                            <button
+                              key={idx}
+                              onClick={() => setGalleryIndex(idx)}
+                              className="relative w-12 h-12 flex-shrink-0 overflow-hidden border-2 transition-all"
+                              style={{
+                                borderColor: idx === galleryIndex ? accent : "transparent",
+                                opacity: idx === galleryIndex ? 1 : 0.5,
+                              }}
+                            >
+                              {thumbIsVideo ? (
+                                <>
+                                  <video src={img} muted preload="metadata" className="w-full h-full object-cover" />
+                                  <div className="absolute inset-0 flex items-center justify-center">
+                                    <div className="w-4 h-4 rounded-full flex items-center justify-center" style={{ background: "rgba(0,0,0,0.6)" }}>
+                                      <div className="w-0 h-0 ml-0.5 border-t-[3px] border-t-transparent border-b-[3px] border-b-transparent border-l-[5px] border-l-white" />
+                                    </div>
+                                  </div>
+                                </>
+                              ) : (
+                                <img src={img} alt="" className="w-full h-full object-cover" />
+                              )}
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
                   </div>

@@ -127,7 +127,7 @@ export default function AdminPage() {
     { id: "overview",   label: "OVERVIEW",   icon: TrendingUp },
     { id: "orders",     label: "ORDERS",     icon: ShoppingCart },
     { id: "inventory",  label: "INVENTORY",  icon: Package },
-    { id: "community",  label: "FEED",       icon: FileText },
+    { id: "community",  label: "POSTS",      icon: FileText },
     { id: "users",      label: "USERS",      icon: Users },
     { id: "settings",   label: "SETTINGS",   icon: Settings },
   ];
@@ -455,11 +455,8 @@ function OrdersPanel() {
 // ══════════════════════════════════════════════════════════════════════════════
 // MEDIA GALLERY UPLOADER — Multi-image + Video support (up to 6 slots)
 // ══════════════════════════════════════════════════════════════════════════════
-const MEDIA_ALLOWED_IMAGE = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-const MEDIA_ALLOWED_VIDEO = ["video/mp4", "video/webm", "video/quicktime"];
-const MEDIA_ALLOWED_ALL = [...MEDIA_ALLOWED_IMAGE, ...MEDIA_ALLOWED_VIDEO];
 const MEDIA_MAX_IMAGE = 10 * 1024 * 1024;
-const MEDIA_MAX_VIDEO = 50 * 1024 * 1024;
+const MEDIA_MAX_VIDEO = 100 * 1024 * 1024;
 const MAX_MEDIA_SLOTS = 6;
 
 function formatFileSize(bytes: number): string {
@@ -494,15 +491,15 @@ function MediaGalleryUploader({
 
   const validateFile = (file: File): boolean => {
     setErrorMsg("");
-    const isVideo = MEDIA_ALLOWED_VIDEO.includes(file.type);
-    const isImage = MEDIA_ALLOWED_IMAGE.includes(file.type);
+    const isVideo = file.type.startsWith("video/");
+    const isImage = file.type.startsWith("image/");
     if (!isImage && !isVideo) {
-      setErrorMsg(`Invalid format. Use JPEG, PNG, WebP, GIF, MP4, or WebM.`);
+      setErrorMsg(`Invalid format. Only image and video files are accepted.`);
       return false;
     }
     const maxSize = isVideo ? MEDIA_MAX_VIDEO : MEDIA_MAX_IMAGE;
     if (file.size > maxSize) {
-      setErrorMsg(`File too large (${formatFileSize(file.size)}). Max ${isVideo ? "50 MB" : "10 MB"}.`);
+      setErrorMsg(`File too large (${formatFileSize(file.size)}). Max ${isVideo ? "100 MB" : "10 MB"}.`);
       return false;
     }
     return true;
@@ -636,7 +633,7 @@ function MediaGalleryUploader({
       </div>
 
       <p className="font-mono text-[8px] tracking-wider mt-2" style={{ color: muted }}>
-        JPEG, PNG, WebP, GIF · Max 10 MB &nbsp;|&nbsp; MP4, WebM · Max 50 MB
+        All image formats · Max 10 MB &nbsp;|&nbsp; All video formats · Max 100 MB
       </p>
 
       {errorMsg && (
@@ -1031,7 +1028,7 @@ function InventoryPanel() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed top-24 left-1/2 -translate-x-1/2 z-[300] font-mono text-[10px] tracking-wider px-5 py-2.5 flex items-center gap-2"
+            className="fixed top-4 left-1/2 -translate-x-1/2 z-[300] font-mono text-[10px] tracking-wider px-5 py-2.5 flex items-center gap-2 rounded-sm shadow-xl"
             style={{
               background: toast.type === "success" ? accent : "rgb(239,68,68)",
               color: toast.type === "success" ? accentFg : "#fff",
@@ -1048,7 +1045,7 @@ function InventoryPanel() {
       <input
         ref={thumbInputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,video/*"
         className="hidden"
         onChange={e => {
           const f = e.target.files?.[0];
@@ -1219,6 +1216,26 @@ function InventoryPanel() {
                         style={{ background: form.tags.includes('hidden') ? 'rgb(239,68,68)' : (isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)') }}
                       >
                         <span className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform duration-200" style={{ transform: form.tags.includes('hidden') ? 'translateX(16px)' : 'translateX(0)' }} />
+                      </button>
+                    </div>
+                    {/* Sold Out Toggle */}
+                    <div className="flex items-center justify-between p-3 border" style={{ borderColor: form.stock === '0' ? 'rgba(234,179,8,0.4)' : border, background: form.stock === '0' ? 'rgba(234,179,8,0.05)' : 'transparent' }}>
+                      <div className="flex items-center gap-2">
+                        <Package size={12} style={{ color: form.stock === '0' ? 'rgb(234,179,8)' : muted }} />
+                        <div>
+                          <span className="font-mono text-[9px] tracking-wider block" style={{ color: fg }}>SOLD OUT</span>
+                          <span className="font-mono text-[8px]" style={{ color: muted }}>Set stock to 0 and mark as sold out</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setForm(p => ({ ...p, stock: p.stock === '0' ? '50' : '0' }));
+                        }}
+                        className="relative w-9 h-5 rounded-full transition-colors duration-200"
+                        style={{ background: form.stock === '0' ? 'rgb(234,179,8)' : (isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)') }}
+                      >
+                        <span className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform duration-200" style={{ transform: form.stock === '0' ? 'translateX(16px)' : 'translateX(0)' }} />
                       </button>
                     </div>
                   </div>
@@ -2195,7 +2212,7 @@ function CreatePostForm({ user }: { user: any }) {
               <span className="font-mono text-[8px]" style={{ color: muted }}>JPG, PNG, WEBP — Max 10 MB</span>
             </div>
           )}
-          <input type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); }} disabled={uploading} />
+          <input type="file" accept="image/*,video/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); }} disabled={uploading} />
         </label>
         {form.imageUrl && (
           <button className="mt-1 font-mono text-[8px] tracking-wider hover:opacity-70" style={{ color: muted }}
@@ -2334,7 +2351,7 @@ function CreateProductForm() {
               <span className="font-mono text-[8px]" style={{ color: muted }}>JPG, PNG, WEBP — Max 10 MB</span>
             </div>
           )}
-          <input type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); }} disabled={uploading} />
+          <input type="file" accept="image/*,video/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); }} disabled={uploading} />
         </label>
       </div>
 

@@ -53,11 +53,8 @@ async function verifyAdmin(req: NextRequest): Promise<boolean> {
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
-const ALLOWED_MIME_TYPES = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_VIDEO_TYPES];
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10 MB
-const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50 MB
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100 MB
 
 // ── POST /api/upload — Admin-only: Upload image to Cloudinary ────────────────
 export async function POST(req: NextRequest) {
@@ -98,19 +95,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    // 4. Validate file type
-    const isVideo = ALLOWED_VIDEO_TYPES.includes(file.type);
-    const isImage = ALLOWED_IMAGE_TYPES.includes(file.type);
+    // 4. Validate file type — accept all image/* and video/* formats
+    const isVideo = file.type.startsWith("video/");
+    const isImage = file.type.startsWith("image/");
     if (!isImage && !isVideo) {
       return NextResponse.json(
-        { error: `Invalid file type "${file.type}". Allowed: JPEG, PNG, WebP, GIF, MP4, WebM.` },
+        { error: `Invalid file type "${file.type}". Only image and video files are accepted.` },
         { status: 400 }
       );
     }
 
     // 5. Validate file size (video gets a larger limit)
     const maxSize = isVideo ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
-    const maxLabel = isVideo ? "50 MB" : "10 MB";
+    const maxLabel = isVideo ? "100 MB" : "10 MB";
     if (file.size > maxSize) {
       const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
       return NextResponse.json(

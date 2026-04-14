@@ -36,7 +36,7 @@ export default function WelcomePage() {
   // ── User enters the site ────────────────────────────────────────────────────
   const handleEnter = useCallback(() => {
     setEntering(true);
-    setTimeout(() => { window.location.href = "/home"; }, 600);
+    setTimeout(() => { window.location.href = "/inventory"; }, 600);
   }, []);
 
   // ── Admin passkey verification ──────────────────────────────────────────────

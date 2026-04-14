@@ -67,6 +67,7 @@ function prepareDbUpdates(updates: Record<string, any>): Record<string, any> {
 
 function revalidateAll() {
   revalidatePath("/", "layout");
+  revalidatePath("/home");
   revalidatePath("/inventory");
   revalidatePath("/deals");
   revalidatePath("/admin");

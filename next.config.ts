@@ -19,11 +19,19 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        // Apply to all pages
+        // Apply security headers to all non-API pages
         source: "/((?!api/).*)",
         headers: securityHeaders,
       },
     ];
+  },
+  experimental: {
+    // Increase the server-side body size limit for the upload route.
+    // This covers image uploads via /api/upload (10 MB limit).
+    // Video uploads bypass this entirely via client-side direct Cloudinary upload.
+    serverActions: {
+      bodySizeLimit: "20mb",
+    },
   },
 };
 

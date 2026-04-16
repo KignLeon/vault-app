@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
 import { createClient } from "@supabase/supabase-js";
 
+// ── Vercel function config ───────────────────────────────────────────────────
+// Increase timeout for large video uploads via server-side path (fallback).
+// The primary path is client-side direct Cloudinary upload (see /api/upload/sign).
+export const maxDuration = 60;
+
 // ── Cloudinary Configuration ─────────────────────────────────────────────────
 const CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || "ddnhp0hzd";
 const API_KEY = process.env.CLOUDINARY_API_KEY;
@@ -53,10 +58,18 @@ async function verifyAdmin(req: NextRequest): Promise<boolean> {
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
-const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10 MB
-const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100 MB
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024;  // 10 MB
+const MAX_VIDEO_SIZE = 200 * 1024 * 1024; // 200 MB (server-side fallback path)
 
-// ── POST /api/upload — Admin-only: Upload image to Cloudinary ────────────────
+// ── Detect if a MIME type is a video (any format) ───────────────────────────
+function isMimeVideo(mimeType: string): boolean {
+  return mimeType.startsWith("video/");
+}
+
+// ── POST /api/upload — Admin-only: Upload file to Cloudinary ─────────────────
+// NOTE: For videos, prefer the client-side direct upload path (/api/upload/sign)
+// to bypass Vercel's body-size limit. This route is the server-side fallback for
+// images and small videos.
 export async function POST(req: NextRequest) {
   // 1. Verify admin
   const isAdmin = await verifyAdmin(req);
@@ -64,7 +77,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized — admin access required" }, { status: 401 });
   }
 
-  // 2. Check Cloudinary credentials are configured
+  // 2. Check Cloudinary credentials
   if (!API_KEY || !API_SECRET) {
     console.error("[upload] Missing Cloudinary credentials:", {
       hasKey: !!API_KEY,
@@ -89,14 +102,14 @@ export async function POST(req: NextRequest) {
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
-    const folder = (formData.get("folder") as string) || "gasclub247/products";
+    const folder = (formData.get("folder") as string) || "gascloud247/products";
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
     // 4. Validate file type — accept all image/* and video/* formats
-    const isVideo = file.type.startsWith("video/");
+    const isVideo = isMimeVideo(file.type);
     const isImage = file.type.startsWith("image/");
     if (!isImage && !isVideo) {
       return NextResponse.json(
@@ -105,9 +118,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 5. Validate file size (video gets a larger limit)
+    // 5. Validate file size
     const maxSize = isVideo ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
-    const maxLabel = isVideo ? "100 MB" : "10 MB";
+    const maxLabel = isVideo ? "200 MB" : "10 MB";
     if (file.size > maxSize) {
       const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
       return NextResponse.json(
@@ -116,25 +129,31 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 6. Convert to base64 and upload to Cloudinary
+    // 6. Stream upload to Cloudinary (avoid base64 double-memory on large files)
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    const base64 = buffer.toString("base64");
-    const dataUri = `data:${file.type};base64,${base64}`;
 
     const uploadOpts: Record<string, any> = {
       folder,
-      resource_type: isVideo ? "video" : "image",
+      // resource_type "auto" lets Cloudinary detect video vs image vs raw
+      resource_type: "auto",
     };
     if (isImage) {
       uploadOpts.transformation = [{ quality: "auto", fetch_format: "auto" }];
     }
 
-    const result = await cloudinary.uploader.upload(dataUri, uploadOpts);
+    const result = await new Promise<any>((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(uploadOpts, (error, result) => {
+        if (error) reject(error);
+        else resolve(result);
+      });
+      uploadStream.end(buffer);
+    });
 
     // 7. Return optimized URL
-    const mediaType = isVideo ? "video" : "image";
-    const optimizedUrl = isVideo
+    // resource_type comes back in result.resource_type
+    const mediaType: "video" | "image" = result.resource_type === "video" ? "video" : "image";
+    const optimizedUrl = mediaType === "video"
       ? result.secure_url
       : `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/f_auto,q_auto,w_800/${result.public_id}`;
 
@@ -156,7 +175,6 @@ export async function POST(req: NextRequest) {
       name: error.name,
     });
 
-    // Parse Cloudinary-specific errors for user-friendly messages
     const msg = error.message || "Upload failed";
     if (msg.includes("Invalid api_key")) {
       return NextResponse.json(

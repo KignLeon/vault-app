@@ -471,7 +471,9 @@ export interface MediaItem {
 }
 
 function isVideoUrl(url: string): boolean {
-  return /\.(mp4|webm|mov)(\?|$)/i.test(url) || url.includes("/video/upload/");
+  // Match all common video extensions + Cloudinary video CDN path
+  return /\.(mp4|webm|mov|avi|mkv|m4v|wmv|flv|ogv|3gp|3g2)(\?|$)/i.test(url) ||
+    url.includes("/video/upload/");
 }
 
 function MediaGalleryUploader({
@@ -785,35 +787,87 @@ function InventoryPanel() {
   useEffect(() => { fetchProducts().then(d => { setProducts(d); setLoading(false); }); }, []);
 
   // ── Media upload handler (targets a specific slot) ──
+  // For videos: uses client-side direct Cloudinary upload via signed URL
+  // (bypasses Vercel's 4 MB body-size limit entirely).
+  // For images: falls back to the server-side /api/upload route.
   const handleMediaAdd = async (file: File, slotIndex: number) => {
     setUploading(true);
     setUploadingSlotIdx(slotIndex);
     setFormError("");
+
+    const isVideo = file.type.startsWith("video/");
+    const folder = `gasclub247/products/${form.category}`;
+
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("folder", `gasclub247/products/${form.category}`);
-      const res = await fetch("/api/upload", { method: "POST", body: fd, headers: adminUploadHeaders() });
-      const data = await res.json();
-      if (!res.ok) {
-        setFormError(data.error || `Upload failed (${res.status})`);
-      } else if (data.optimizedUrl || data.url) {
-        const newItem: MediaItem = {
-          url: data.optimizedUrl || data.url,
-          type: data.mediaType === "video" ? "video" : "image",
-        };
-        setMediaItems(prev => {
-          const updated = [...prev];
-          if (slotIndex < updated.length) {
-            updated[slotIndex] = newItem; // Replace existing
-          } else {
-            updated.push(newItem); // Add new
-          }
-          return updated;
+      let resultUrl = "";
+      let mediaType: "image" | "video" = "image";
+
+      if (isVideo) {
+        // ── Client-side direct upload to Cloudinary (no Vercel body limit) ──
+        // Step 1: Get a signed upload signature from our API
+        const signRes = await fetch("/api/upload/sign", {
+          method: "POST",
+          headers: { ...adminUploadHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ folder, resource_type: "video" }),
         });
+        if (!signRes.ok) {
+          const signData = await signRes.json();
+          setFormError(signData.error || `Failed to get upload credentials (${signRes.status})`);
+          return;
+        }
+        const sign = await signRes.json();
+
+        // Step 2: POST directly to Cloudinary's upload endpoint
+        const cloudFd = new FormData();
+        cloudFd.append("file", file);
+        cloudFd.append("api_key", sign.apiKey);
+        cloudFd.append("timestamp", String(sign.timestamp));
+        cloudFd.append("signature", sign.signature);
+        cloudFd.append("folder", sign.folder);
+        cloudFd.append("resource_type", "video");
+
+        const cloudRes = await fetch(
+          `https://api.cloudinary.com/v1_1/${sign.cloudName}/video/upload`,
+          { method: "POST", body: cloudFd }
+        );
+        if (!cloudRes.ok) {
+          const errData = await cloudRes.json().catch(() => ({}));
+          setFormError(errData?.error?.message || `Cloudinary upload failed (${cloudRes.status})`);
+          return;
+        }
+        const cloudData = await cloudRes.json();
+        resultUrl = cloudData.secure_url || "";
+        mediaType = "video";
       } else {
-        setFormError("Upload returned no URL");
+        // ── Server-side upload for images ──
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("folder", folder);
+        const res = await fetch("/api/upload", { method: "POST", body: fd, headers: adminUploadHeaders() });
+        const data = await res.json();
+        if (!res.ok) {
+          setFormError(data.error || `Upload failed (${res.status})`);
+          return;
+        }
+        resultUrl = data.optimizedUrl || data.url || "";
+        mediaType = data.mediaType === "video" ? "video" : "image";
       }
+
+      if (!resultUrl) {
+        setFormError("Upload returned no URL");
+        return;
+      }
+
+      const newItem: MediaItem = { url: resultUrl, type: mediaType };
+      setMediaItems(prev => {
+        const updated = [...prev];
+        if (slotIndex < updated.length) {
+          updated[slotIndex] = newItem; // Replace existing
+        } else {
+          updated.push(newItem); // Add new
+        }
+        return updated;
+      });
     } catch (err: any) {
       setFormError(err?.message || "Upload failed. Check connection.");
     }

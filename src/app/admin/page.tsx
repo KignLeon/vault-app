@@ -51,11 +51,18 @@ const ROLE_COLORS: Record<string, string> = {
 };
 
 // ── Helper: get stored admin session token ────────────────────────────────────
+// Reads from localStorage first (persistent), falls back to sessionStorage (legacy / legacy tabs).
 function getAdminToken(): string | null {
   try {
-    const sess = sessionStorage.getItem("gc247_session");
-    if (sess) {
-      const parsed = JSON.parse(sess);
+    const lsSess = localStorage.getItem("gc247_session");
+    if (lsSess) {
+      const parsed = JSON.parse(lsSess);
+      if (parsed.access_token) return parsed.access_token;
+    }
+    // Legacy fallback: sessionStorage (old sessions before localStorage migration)
+    const ssSess = sessionStorage.getItem("gc247_session");
+    if (ssSess) {
+      const parsed = JSON.parse(ssSess);
       return parsed.access_token || null;
     }
   } catch {}
@@ -74,13 +81,26 @@ function adminUploadHeaders(): Record<string, string> {
   const headers: Record<string, string> = {};
   const token = getAdminToken();
   if (token) headers["Authorization"] = `Bearer ${token}`;
-  // Fallback: also send admin passkey stored in sessionStorage
-  try {
-    if (sessionStorage.getItem("gc247_admin") === "true") {
-      headers["X-Admin-Key"] = "gc247_admin_verified";
-    }
-  } catch {}
   return headers;
+}
+
+// ── Safe JSON response parser ─────────────────────────────────────────────────
+// Vercel returns plain-text "Request Entity Too Large" on 413 — calling .json()
+// on that throws "Unexpected token 'R'...". This wrapper always returns an object.
+async function safeJson(res: Response): Promise<any> {
+  const contentType = res.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    try { return await res.json(); } catch { return { error: `Server returned invalid JSON (HTTP ${res.status})` }; }
+  }
+  // Non-JSON response (HTML error page, plain text, etc.)
+  const text = await res.text().catch(() => "");
+  if (res.status === 413 || text.toLowerCase().includes("too large") || text.toLowerCase().includes("entity")) {
+    return { error: "File too large — maximum image size is 10 MB. Use a smaller file or compress the image first." };
+  }
+  if (res.status === 401) {
+    return { error: "Session expired — please log out and log back in." };
+  }
+  return { error: text || `Request failed (HTTP ${res.status})` };
 }
 
 // ── Admin Shell ────────────────────────────────────────────────────────────────
@@ -844,7 +864,9 @@ function InventoryPanel() {
         fd.append("file", file);
         fd.append("folder", folder);
         const res = await fetch("/api/upload", { method: "POST", body: fd, headers: adminUploadHeaders() });
-        const data = await res.json();
+        // Use safeJson instead of bare .json() — Vercel returns plain-text "Request Entity Too Large"
+        // on 413 which causes the exact "Unexpected token 'R'..." JSON parse crash seen by users.
+        const data = await safeJson(res);
         if (!res.ok) {
           setFormError(data.error || `Upload failed (${res.status})`);
           return;
@@ -1018,7 +1040,7 @@ function InventoryPanel() {
       fd.append("file", file);
       fd.append("folder", `gasclub247/products/${product.category || "featured"}`);
       const res = await fetch("/api/upload", { method: "POST", body: fd, headers: adminUploadHeaders() });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) {
         showToast(data.error || `Upload failed (${res.status})`, "error");
       } else {

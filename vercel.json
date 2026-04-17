@@ -12,5 +12,10 @@
         { "key": "Cache-Control", "value": "no-store, must-revalidate" }
       ]
     }
-  ]
+  ],
+  "functions": {
+    "src/app/api/upload/route.ts": {
+      "maxDuration": 60
+    }
+  }
 }

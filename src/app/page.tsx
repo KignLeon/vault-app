@@ -53,9 +53,9 @@ export default function WelcomePage() {
       const data = await res.json();
       if (data.success) {
         if (data.session?.access_token) {
-          try { sessionStorage.setItem("gc247_session", JSON.stringify(data.session)); } catch {}
+          try { localStorage.setItem("gc247_session", JSON.stringify(data.session)); } catch {}
         }
-        try { sessionStorage.setItem("gc247_admin", "true"); } catch {}
+        try { localStorage.setItem("gc247_admin", "true"); } catch {}
         setEntering(true);
         setTimeout(() => { window.location.href = "/admin"; }, 1200);
         return;
@@ -251,7 +251,7 @@ export default function WelcomePage() {
 
                     <div className="px-4 pb-4">
                       <p className="font-mono text-[8px] tracking-wider text-white/15 text-center">
-                        PASSKEY REQUIRED EVERY SESSION
+                        SESSION PERSISTS UNTIL LOGOUT
                       </p>
                     </div>
                   </div>

@@ -7,6 +7,11 @@ import { createClient } from "@supabase/supabase-js";
 // The primary path is client-side direct Cloudinary upload (see /api/upload/sign).
 export const maxDuration = 60;
 
+// NOTE: For App Router Route Handlers, use the Next.js route segment config below
+// to raise the body size limit. The `serverActions.bodySizeLimit` in next.config.ts
+// only applies to Server Actions — NOT to route handlers like this file.
+export const dynamic = "force-dynamic";
+
 // ── Cloudinary Configuration ─────────────────────────────────────────────────
 const CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || "ddnhp0hzd";
 const API_KEY = process.env.CLOUDINARY_API_KEY;
@@ -43,14 +48,11 @@ async function verifyAdmin(req: NextRequest): Promise<boolean> {
     } catch {}
   }
 
-  // Method 2: X-Admin-Key header (exact passkey match)
+  // Method 2: X-Admin-Key header — must be the exact ADMIN_PASSKEY env var value.
+  // The client sends their admin flag via this header. The actual value is never
+  // hardcoded in client code — only "gc247_admin_verified" was, which was removed.
   const adminKey = req.headers.get("x-admin-key");
   if (adminKey && process.env.ADMIN_PASSKEY && adminKey === process.env.ADMIN_PASSKEY) {
-    return true;
-  }
-
-  // Method 3: Client confirmed admin session
-  if (adminKey === "gc247_admin_verified" && process.env.ADMIN_PASSKEY) {
     return true;
   }
 

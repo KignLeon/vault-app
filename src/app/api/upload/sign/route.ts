@@ -35,9 +35,9 @@ async function verifyAdmin(req: NextRequest): Promise<boolean> {
       }
     } catch {}
   }
+  // X-Admin-Key: must match exact ADMIN_PASSKEY env var — no hardcoded bypass values
   const adminKey = req.headers.get("x-admin-key");
   if (adminKey && process.env.ADMIN_PASSKEY && adminKey === process.env.ADMIN_PASSKEY) return true;
-  if (adminKey === "gc247_admin_verified" && process.env.ADMIN_PASSKEY) return true;
   return false;
 }
 

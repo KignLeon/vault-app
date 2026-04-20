@@ -4,6 +4,10 @@ import { createClient } from "@supabase/supabase-js";
 // This route runs server-side with the service role key,
 // bypassing RLS completely. It's the definitive way to
 // serve products to the public storefront.
+// Cache-Control: no-store ensures Vercel never serves stale products after admin edits.
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function getAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -25,12 +29,18 @@ export async function GET() {
 
     if (error) {
       console.error("[api/products] Supabase error:", error.message);
-      return NextResponse.json({ products: [], error: error.message }, { status: 500 });
+      const resp = NextResponse.json({ products: [], error: error.message }, { status: 500 });
+      resp.headers.set("Cache-Control", "no-store");
+      return resp;
     }
 
-    return NextResponse.json({ products: data || [] });
+    const resp = NextResponse.json({ products: data || [] });
+    resp.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
+    return resp;
   } catch (err: any) {
     console.error("[api/products] Exception:", err.message);
-    return NextResponse.json({ products: [], error: err.message }, { status: 500 });
+    const resp = NextResponse.json({ products: [], error: err.message }, { status: 500 });
+    resp.headers.set("Cache-Control", "no-store");
+    return resp;
   }
 }

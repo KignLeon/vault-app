@@ -31,33 +31,35 @@ function getStatusIndex(status: string): number {
   return map[status] ?? 0;
 }
 
-function OrderStatusTimeline({ status, accent, muted, fg, isDark, border }: { status: string; accent: string; muted: string; fg: string; isDark: boolean; border: string }) {
+function OrderStatusTimeline({ status, accent, muted, fg, isDark, border }: {
+  status: string; accent: string; muted: string; fg: string; isDark: boolean; border: string;
+}) {
   const currentIndex = getStatusIndex(status);
-
   return (
-    <div className="flex items-center gap-1 w-full">
+    <div className="flex items-center gap-1 w-full py-4">
       {STATUS_STEPS.map((step, i) => {
         const Icon = step.icon;
         const isCompleted = i <= currentIndex;
         const isCurrent = i === currentIndex;
         return (
           <div key={step.key} className="flex items-center flex-1">
-            <div className="flex flex-col items-center gap-1">
+            <div className="flex flex-col items-center gap-1.5">
               <div
-                className="w-6 h-6 rounded-full flex items-center justify-center transition-all"
+                className="w-10 h-10 rounded-full flex items-center justify-center transition-all"
                 style={{
                   background: isCompleted ? accent : (isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)"),
                   border: isCurrent ? `2px solid ${accent}` : "none",
+                  boxShadow: isCurrent ? `0 0 12px ${accent}40` : "none",
                 }}
               >
-                <Icon size={10} style={{ color: isCompleted ? (isDark ? "#000" : "#fff") : muted }} />
+                <Icon size={16} style={{ color: isCompleted ? (isDark ? "#000" : "#fff") : muted }} />
               </div>
-              <span className="font-mono text-[7px] tracking-wider" style={{ color: isCompleted ? fg : muted }}>
+              <span className="font-mono text-[11px] tracking-wider font-bold" style={{ color: isCompleted ? fg : muted }}>
                 {step.label}
               </span>
             </div>
             {i < STATUS_STEPS.length - 1 && (
-              <div className="flex-1 h-px mx-1" style={{ background: i < currentIndex ? accent : border }} />
+              <div className="flex-1 h-0.5 mx-2" style={{ background: i < currentIndex ? accent : border }} />
             )}
           </div>
         );
@@ -65,6 +67,7 @@ function OrderStatusTimeline({ status, accent, muted, fg, isDark, border }: { st
     </div>
   );
 }
+
 
 // ---- DB ORDER CARD ----
 function DbOrderCard({ order, accent, accentGlow, accentFg, fg, border, muted, isDark, cardBg }: {
@@ -137,6 +140,49 @@ function DbOrderCard({ order, accent, accentGlow, accentFg, fg, border, muted, i
             <div className="p-4 space-y-4">
               {/* Status Timeline */}
               <OrderStatusTimeline status={order.status || "pending"} accent={accent} muted={muted} fg={fg} isDark={isDark} border={border} />
+
+              {/* Tracking Info Card — shows when tracking/delivery info exists */}
+              {(order.tracking_number || order.estimated_delivery) && (
+                <div
+                  className="p-3 space-y-2"
+                  style={{
+                    background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+                    border: `1px solid ${border}`,
+                  }}
+                >
+                  {order.tracking_number && (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Truck size={14} style={{ color: accent }} />
+                        <span className="font-mono text-xs font-bold tracking-wider" style={{ color: fg }}>
+                          {order.carrier || "TRACKING"}
+                        </span>
+                      </div>
+                      <span className="font-mono text-xs" style={{ color: muted }}>{order.tracking_number}</span>
+                    </div>
+                  )}
+                  {order.estimated_delivery && (
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-xs tracking-wider" style={{ color: muted }}>EST. DELIVERY</span>
+                      <span className="font-mono text-xs font-bold" style={{ color: fg }}>
+                        {new Date(order.estimated_delivery).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      </span>
+                    </div>
+                  )}
+                  {order.tracking_url && (
+                    <a
+                      href={order.tracking_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 font-mono text-xs tracking-wider pt-1"
+                      style={{ color: accent }}
+                    >
+                      <Truck size={12} /> TRACK PACKAGE →
+                    </a>
+                  )}
+                </div>
+              )}
+
 
               {/* Items */}
               <div className="space-y-2">

@@ -323,6 +323,9 @@ function OrdersPanel() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [trackingInputs, setTrackingInputs] = useState<Record<string, string>>({});
+  const [carrierInputs, setCarrierInputs] = useState<Record<string, string>>({});
+  const [trackingUrlInputs, setTrackingUrlInputs] = useState<Record<string, string>>({});
+  const [deliveryInputs, setDeliveryInputs] = useState<Record<string, string>>({});
 
   const load = useCallback(() => {
     setLoading(true);
@@ -341,7 +344,17 @@ function OrdersPanel() {
     load();
   };
 
+  const saveTracking = async (order: any) => {
+    await patchOrder(order.id, {
+      trackingNumber: trackingInputs[order.id] ?? (order.tracking_number || ""),
+      carrier: carrierInputs[order.id] ?? (order.carrier || ""),
+      trackingUrl: trackingUrlInputs[order.id] ?? (order.tracking_url || ""),
+      estimatedDelivery: deliveryInputs[order.id] ?? (order.estimated_delivery || ""),
+    });
+  };
+
   const statusBtns = ["all", "pending", "paid", "shipped", "completed", "cancelled"];
+
 
   return (
     <div className="space-y-4">
@@ -441,25 +454,53 @@ function OrdersPanel() {
                           </div>
                         </div>
 
-                        {/* Tracking */}
+                        {/* Tracking + Shipping Details */}
                         <div>
-                          <Label>TRACKING NUMBER</Label>
-                          <div className="flex gap-2">
-                            <input value={trackingInputs[order.id] ?? (order.tracking_number || "")}
-                              onChange={e => setTrackingInputs(p => ({ ...p, [order.id]: e.target.value }))}
-                              placeholder="Enter tracking #…"
-                              className="flex-1 bg-transparent border px-3 py-2 font-mono text-[10px] outline-none"
+                          <Label>SHIPPING DETAILS</Label>
+                          <div className="space-y-2">
+                            <div className="flex gap-2">
+                              <input value={trackingInputs[order.id] ?? (order.tracking_number || "")}
+                                onChange={e => setTrackingInputs(p => ({ ...p, [order.id]: e.target.value }))}
+                                placeholder="Tracking number…"
+                                className="flex-1 bg-transparent border px-3 py-2 font-mono text-[10px] outline-none"
+                                style={{ borderColor: border, color: fg }}
+                              />
+                              <input value={carrierInputs[order.id] ?? (order.carrier || "")}
+                                onChange={e => setCarrierInputs(p => ({ ...p, [order.id]: e.target.value }))}
+                                placeholder="Carrier (USPS, UPS…)"
+                                className="flex-1 bg-transparent border px-3 py-2 font-mono text-[10px] outline-none"
+                                style={{ borderColor: border, color: fg }}
+                              />
+                            </div>
+                            <input value={trackingUrlInputs[order.id] ?? (order.tracking_url || "")}
+                              onChange={e => setTrackingUrlInputs(p => ({ ...p, [order.id]: e.target.value }))}
+                              placeholder="Tracking URL (optional)"
+                              className="w-full bg-transparent border px-3 py-2 font-mono text-[10px] outline-none"
                               style={{ borderColor: border, color: fg }}
                             />
-                            <button onClick={() => patchOrder(order.id, { trackingNumber: trackingInputs[order.id] || "" })}
-                              disabled={updatingId === order.id}
-                              className="px-3 py-2 border font-mono text-[9px] flex items-center gap-1 hover:opacity-80 transition-opacity disabled:opacity-40"
-                              style={{ borderColor: accent, color: accent }}
-                            >
-                              <Truck size={10} /> SAVE
-                            </button>
+                            <div className="flex gap-2">
+                              <div className="flex-1">
+                                <span className="font-mono text-[8px] tracking-wider mb-1 block" style={{ color: muted }}>EST. DELIVERY DATE</span>
+                                <input
+                                  type="date"
+                                  value={deliveryInputs[order.id] ?? (order.estimated_delivery || "")}
+                                  onChange={e => setDeliveryInputs(p => ({ ...p, [order.id]: e.target.value }))}
+                                  className="w-full bg-transparent border px-3 py-2 font-mono text-[10px] outline-none"
+                                  style={{ borderColor: border, color: fg }}
+                                />
+                              </div>
+                              <button
+                                onClick={() => saveTracking(order)}
+                                disabled={updatingId === order.id}
+                                className="self-end px-4 py-2 border font-mono text-[9px] flex items-center gap-1.5 hover:opacity-80 transition-opacity disabled:opacity-40"
+                                style={{ borderColor: accent, color: accent }}
+                              >
+                                <Truck size={10} /> SAVE
+                              </button>
+                            </div>
                           </div>
                         </div>
+
                       </div>
                     </motion.div>
                   )}

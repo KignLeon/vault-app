@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { sendOrderNotification } from "./_notifications";
 
 function getAdminClient() {
   return createClient(
@@ -153,23 +154,78 @@ export async function PATCH(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { orderId, status, trackingNumber } = body;
+  const {
+    orderId,
+    status,
+    trackingNumber,
+    carrier,
+    trackingUrl,
+    estimatedDelivery,
+    customerPhone,
+  } = body;
 
   if (!orderId) return NextResponse.json({ error: "orderId required" }, { status: 400 });
 
-  const { error } = await admin
+  // Fetch current order state before patching (needed for notification idempotency)
+  const { data: currentOrder } = await admin
     .from("orders")
-    .update({
-      ...(status ? { status } : {}),
-      ...(trackingNumber !== undefined ? { tracking_number: trackingNumber } : {}),
-    })
-    .eq("id", orderId);
+    .select("*")
+    .eq("id", orderId)
+    .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // Build the updates object — only include fields that were explicitly provided
+  const updates: Record<string, unknown> = {};
+  if (status !== undefined)             updates.status            = status;
+  if (trackingNumber !== undefined)     updates.tracking_number   = trackingNumber;
+  if (carrier !== undefined)            updates.carrier           = carrier;
+  if (trackingUrl !== undefined)        updates.tracking_url      = trackingUrl;
+  if (estimatedDelivery !== undefined)  updates.estimated_delivery = estimatedDelivery || null;
+  if (customerPhone !== undefined)      updates.customer_phone    = customerPhone;
+
+  const { error } = await admin.from("orders").update(updates).eq("id", orderId);
+  if (error) {
+    console.error("[PATCH /api/orders] update error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // ── Audit event + Notifications (status changes only, non-blocking) ──────
+  if (status && currentOrder?.status !== status) {
+    // Log audit event
+    admin.from("order_events").insert({
+      order_id: orderId,
+      event_type: "status_change",
+      old_value: currentOrder?.status,
+      new_value: status,
+      metadata: {
+        changed_by: user.id,
+        tracking_number: trackingNumber || currentOrder?.tracking_number,
+      },
+    }).then().catch((e: Error) => console.warn("[order_events insert]", e.message));
+
+    // Build merged order object for notification
+    const updatedOrder = { ...currentOrder, ...updates };
+
+    // 🔔 Fire shipped notification (idempotent — only if not already notified)
+    if (status === "shipped" && !currentOrder?.notified_shipped) {
+      sendOrderNotification(updatedOrder, "shipped").catch(console.error);
+      admin.from("orders")
+        .update({ notified_shipped: true })
+        .eq("id", orderId)
+        .then().catch(() => {});
+    }
+
+    // 🔔 Fire delivered notification (idempotent)
+    if ((status === "completed" || status === "delivered") && !currentOrder?.notified_delivered) {
+      sendOrderNotification(updatedOrder, "delivered").catch(console.error);
+      admin.from("orders")
+        .update({ notified_delivered: true })
+        .eq("id", orderId)
+        .then().catch(() => {});
+    }
+  }
 
   return NextResponse.json({ success: true });
 }
-
 
 // ── Telegram Notification ─────────────────────────────────────────────────────
 async function sendTelegramNotification(order: {

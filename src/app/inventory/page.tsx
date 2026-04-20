@@ -70,10 +70,10 @@ export default function InventoryPage() {
     <AppShell>
       {/* Hero */}
       <div className="pt-6 pb-4" style={{ borderBottom: `1px solid ${border}` }}>
-        <h1 className="font-mono text-xs tracking-[0.3em] uppercase mb-1" style={{ color: fg }}>
+        <h1 className="font-mono text-sm tracking-[0.3em] uppercase mb-1" style={{ color: fg }}>
           INVENTORY
         </h1>
-        <p className="text-sm" style={{ color: muted }}>
+        <p className="text-base" style={{ color: muted }}>
           Private inventory. Direct access. No middlemen.
         </p>
       </div>
@@ -84,7 +84,7 @@ export default function InventoryPage() {
           <button
             key={cat.id}
             onClick={() => setActiveCategory(cat.id)}
-            className="font-mono text-[10px] tracking-[0.15em] px-3 py-2 border transition-all whitespace-nowrap active:scale-95 flex items-center gap-1.5"
+            className="font-mono text-xs tracking-[0.12em] px-4 py-2.5 border transition-all whitespace-nowrap active:scale-95 flex items-center gap-1.5"
             style={{
               background: activeCategory === cat.id ? accent : "transparent",
               color: activeCategory === cat.id ? accentFg : muted,
@@ -99,20 +99,20 @@ export default function InventoryPage() {
 
       {/* Product count */}
       <div className="mb-4">
-        <span className="font-mono text-[10px] tracking-wider" style={{ color: muted }}>
+        <span className="font-mono text-xs tracking-wider" style={{ color: muted }}>
           {loadingProducts ? "LOADING..." : `${filtered.length} PRODUCTS · BULK PRICING AVAILABLE`}
         </span>
       </div>
 
       {/* Grid — with loading skeletons */}
       {loadingProducts ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="aspect-[3/4] rounded animate-pulse" style={{ background: isDark ? "#111" : "#f0f0f0" }} />
           ))}
         </div>
       ) : (
-      <motion.div layout className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+      <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
         <AnimatePresence mode="popLayout">
           {filtered.map((product) => (
             <motion.div
@@ -287,8 +287,8 @@ export default function InventoryPage() {
               <div className="p-5 space-y-4">
                 {/* Title + Price */}
                 <div>
-                  <h2 className="font-mono text-base tracking-wider font-bold uppercase" style={{ color: fg }}>{selectedProduct.name}</h2>
-                  <p className="text-sm leading-relaxed mt-2" style={{ color: muted }}>{selectedProduct.description}</p>
+                  <h2 className="font-mono text-lg tracking-wider font-bold uppercase" style={{ color: fg }}>{selectedProduct.name}</h2>
+                  <p className="text-base leading-relaxed mt-2" style={{ color: muted }}>{selectedProduct.description}</p>
                 </div>
 
                 {/* Tags */}
@@ -302,8 +302,8 @@ export default function InventoryPage() {
 
                 {/* Unit Price */}
                 <div className="flex items-baseline gap-2">
-                  <span className="font-mono text-[10px] tracking-wider" style={{ color: muted }}>UNIT</span>
-                  <span className="font-mono text-xl font-bold" style={{ color: fg }}>${selectedProduct.price}</span>
+                  <span className="font-mono text-xs tracking-wider" style={{ color: muted }}>UNIT</span>
+                  <span className="font-mono text-2xl font-bold" style={{ color: fg }}>${selectedProduct.price}</span>
                 </div>
 
                 {/* Bulk Pricing */}
@@ -333,13 +333,13 @@ export default function InventoryPage() {
                 {/* Quantity (only if no bulk selected) */}
                 {!selectedBulk && (
                   <div className="flex items-center gap-4 py-3" style={{ borderTop: `1px solid ${border}` }}>
-                    <span className="font-mono text-[10px] tracking-wider" style={{ color: muted }}>QTY</span>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => setQty(Math.max(1, qty - 1))} className="w-8 h-8 flex items-center justify-center border active:scale-90 transition-transform" style={{ borderColor: border, color: fg }}><Minus size={12} /></button>
-                      <span className="font-mono text-sm font-bold w-8 text-center" style={{ color: fg }}>{qty}</span>
-                      <button onClick={() => setQty(qty + 1)} className="w-8 h-8 flex items-center justify-center border active:scale-90 transition-transform" style={{ borderColor: border, color: fg }}><Plus size={12} /></button>
+                    <span className="font-mono text-xs tracking-wider" style={{ color: muted }}>QTY</span>
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => setQty(Math.max(1, qty - 1))} className="w-10 h-10 flex items-center justify-center border active:scale-90 transition-transform" style={{ borderColor: border, color: fg }}><Minus size={14} /></button>
+                      <span className="font-mono text-base font-bold w-10 text-center" style={{ color: fg }}>{qty}</span>
+                      <button onClick={() => setQty(qty + 1)} className="w-10 h-10 flex items-center justify-center border active:scale-90 transition-transform" style={{ borderColor: border, color: fg }}><Plus size={14} /></button>
                     </div>
-                    <span className="ml-auto font-mono text-sm font-bold" style={{ color: fg }}>${(selectedProduct.price * qty).toFixed(0)}</span>
+                    <span className="ml-auto font-mono text-base font-bold" style={{ color: fg }}>${(selectedProduct.price * qty).toFixed(0)}</span>
                   </div>
                 )}
               </div>
@@ -348,27 +348,27 @@ export default function InventoryPage() {
               <div className="sticky bottom-0 px-5 py-4 space-y-2" style={{ background: isDark ? "#0a0a0a" : "#fff", borderTop: `1px solid ${border}` }}>
                 {/* Price summary */}
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-mono text-[10px] tracking-wider" style={{ color: muted }}>
+                  <span className="font-mono text-xs tracking-wider" style={{ color: muted }}>
                     {selectedBulk ? selectedBulk.qty : `${qty} UNIT${qty > 1 ? "S" : ""}`}
                   </span>
-                  <span className="font-mono text-lg font-bold" style={{ color: fg }}>${currentPrice}</span>
+                  <span className="font-mono text-xl font-bold" style={{ color: fg }}>${currentPrice}</span>
                 </div>
 
                 {/* Primary actions */}
                 <div className="flex gap-2">
                   <button
                     onClick={handleAdd}
-                    className="flex-1 py-3 font-mono text-[10px] tracking-[0.2em] flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+                    className="flex-1 py-4 font-mono text-xs tracking-[0.2em] flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
                     style={{ background: accent, color: accentFg }}
                   >
-                    <ShoppingBag size={14} /> ADD TO CART
+                    <ShoppingBag size={16} /> ADD TO CART
                   </button>
                   <button
                     onClick={() => { handleAdd(); setTimeout(() => window.location.href = "/checkout", 300); }}
-                    className="flex-1 py-3 font-mono text-[10px] tracking-[0.2em] flex items-center justify-center gap-2 border active:scale-[0.98] transition-transform disabled:opacity-40"
+                    className="flex-1 py-4 font-mono text-xs tracking-[0.2em] flex items-center justify-center gap-2 border active:scale-[0.98] transition-transform disabled:opacity-40"
                     style={{ borderColor: accent, color: accent }}
                   >
-                    <Zap size={14} /> BUY NOW
+                    <Zap size={16} /> BUY NOW
                   </button>
                 </div>
 

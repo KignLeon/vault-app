@@ -211,7 +211,6 @@ export function GasclubNav() {
         )}
       </AnimatePresence>
 
-      {/* Bottom Tabs */}
       <div
         className="fixed bottom-0 left-0 z-[99] w-full backdrop-blur-md transition-colors duration-300 safe-area-bottom"
         style={{
@@ -219,7 +218,7 @@ export function GasclubNav() {
           borderTop: `1px solid ${border}`,
         }}
       >
-        <div className="flex items-stretch h-14">
+        <div className="flex items-stretch h-16">
           {tabs.map((tab) => {
             const isActive = pathname === tab.href;
             const Icon = tab.icon;
@@ -227,16 +226,16 @@ export function GasclubNav() {
               <Link
                 key={tab.href}
                 href={tab.href}
-                className="flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors relative active:bg-white/5"
+                className="flex-1 flex flex-col items-center justify-center gap-1 transition-colors relative active:bg-white/5"
               >
                 <Icon
-                  size={18}
+                  size={22}
                   style={{ color: isActive ? accent : `${fg}40` }}
                   className="transition-colors"
                 />
                 <span
                   className={cn(
-                    "font-mono text-[8px] tracking-[0.15em] transition-colors",
+                    "font-mono text-[9px] tracking-[0.15em] transition-colors",
                   )}
                   style={{ color: isActive ? accent : `${fg}30` }}
                 >

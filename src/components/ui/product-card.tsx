@@ -135,23 +135,23 @@ export function ProductCard({
         {/* Quick Add — always visible */}
         <button
           onClick={handleAdd}
-          className="absolute bottom-1.5 right-1.5 w-7 h-7 flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 active:scale-90 transition-all"
+          className="absolute bottom-2 right-2 w-9 h-9 flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 active:scale-90 transition-all"
           style={{ background: accent, color: accentFg }}
         >
-          <Plus size={14} />
+          <Plus size={16} />
         </button>
       </div>
 
       {/* Label */}
-      <p className="font-mono text-[10px] tracking-[0.1em] font-bold truncate leading-tight" style={{ color: fg }} onClick={() => onClick?.(product)}>
+      <p className="font-mono text-[13px] tracking-[0.08em] font-bold truncate leading-tight mt-1" style={{ color: fg }} onClick={() => onClick?.(product)}>
         {product.name}
       </p>
 
       {/* Price + Bulk starting */}
-      <div className="flex items-baseline gap-1.5 mt-0.5">
-        <span className="font-mono text-[11px] font-bold" style={{ color: fg }}>${product.price}</span>
+      <div className="flex items-baseline gap-1.5 mt-1">
+        <span className="font-mono text-[15px] font-bold" style={{ color: fg }}>${product.price}</span>
         {hasBulk && product.bulk && (
-          <span className="font-mono text-[8px] tracking-wider" style={{ color: muted }}>
+          <span className="font-mono text-[10px] tracking-wider" style={{ color: muted }}>
             · QP ${product.bulk[0].price}
           </span>
         )}

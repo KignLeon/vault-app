@@ -69,50 +69,50 @@ export default function InventoryPage() {
   return (
     <AppShell>
       {/* Hero */}
-      <div className="px-2 md:px-4 pt-5 pb-3" style={{ borderBottom: `1px solid ${border}` }}>
-        <h1 className="font-mono text-base tracking-[0.25em] uppercase mb-1" style={{ color: fg }}>
+      <div className="px-3 md:px-6 pt-8 pb-4" style={{ borderBottom: `1px solid ${border}` }}>
+        <h1 className="font-mono text-xl tracking-[0.2em] uppercase mb-2" style={{ color: fg }}>
           INVENTORY
         </h1>
-        <p className="text-base" style={{ color: muted }}>
+        <p className="text-lg md:text-xl" style={{ color: muted }}>
           Private inventory. Direct access. No middlemen.
         </p>
       </div>
 
       {/* Categories */}
-      <div className="flex items-center gap-2 overflow-x-auto no-scroll-bar px-2 md:px-4 py-3 md:flex-wrap">
+      <div className="flex items-center gap-3 overflow-x-auto no-scroll-bar px-3 md:px-6 py-4 md:flex-wrap">
         {categories.map((cat) => (
           <button
             key={cat.id}
             onClick={() => setActiveCategory(cat.id)}
-            className="font-mono text-[13px] tracking-[0.08em] px-4 py-2.5 border transition-all whitespace-nowrap active:scale-95 flex items-center gap-2"
+            className="font-mono text-[14px] md:text-[16px] tracking-[0.08em] px-5 py-3 border transition-all whitespace-nowrap active:scale-95 flex items-center gap-2"
             style={{
               background: activeCategory === cat.id ? accent : "transparent",
               color: activeCategory === cat.id ? accentFg : muted,
               borderColor: activeCategory === cat.id ? accent : border,
             }}
           >
-            {cat.emoji && <span className="text-sm">{cat.emoji}</span>}
+            {cat.emoji && <span className="text-base md:text-lg">{cat.emoji}</span>}
             {cat.label}
           </button>
         ))}
       </div>
 
       {/* Product count */}
-      <div className="mb-3 px-2 md:px-4">
-        <span className="font-mono text-sm tracking-wider" style={{ color: muted }}>
+      <div className="mb-4 px-3 md:px-6">
+        <span className="font-mono text-base md:text-lg tracking-wider" style={{ color: muted }}>
           {loadingProducts ? "LOADING..." : `${filtered.length} PRODUCTS · BULK PRICING AVAILABLE`}
         </span>
       </div>
 
       {/* Grid — true full-bleed, no side padding */}
       {loadingProducts ? (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-px">
-          {Array.from({ length: 12 }).map((_, i) => (
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-px">
+          {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="aspect-[4/5] animate-pulse" style={{ background: isDark ? "#111" : "#f0f0f0" }} />
           ))}
         </div>
       ) : (
-      <motion.div layout className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-px">
+      <motion.div layout className="grid grid-cols-2 lg:grid-cols-3 gap-px">
         <AnimatePresence mode="popLayout">
           {filtered.map((product) => (
             <motion.div

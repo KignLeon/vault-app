@@ -17,8 +17,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <ProductTicker />
       </div>
 
-      {/* Main content — accounts for new nav (~96px) + ticker (~52px) */}
-      <main className="w-full max-w-7xl mx-auto px-3 sm:px-5 md:px-8 pt-[160px] pb-24 md:pb-16 flex-1 min-h-[100vh]">
+      {/* Main content — edge-to-edge, minimal side padding */}
+      <main className="w-full px-1.5 sm:px-3 md:px-6 pt-[160px] pb-28 md:pb-16 flex-1 min-h-[100vh]">
         {children}
       </main>
 

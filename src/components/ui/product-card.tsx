@@ -49,7 +49,7 @@ export function ProductCard({
     >
       {/* Image / Video */}
       <div
-        className="relative aspect-square w-full overflow-hidden mb-2 border product-img-container"
+        className="relative aspect-[4/5] w-full overflow-hidden mb-2.5 border product-img-container"
         style={{ borderColor: border, background: isDark ? "#111" : "#f5f5f5" }}
         onClick={() => onClick?.(product)}
       >
@@ -135,24 +135,24 @@ export function ProductCard({
         {/* Quick Add — always visible */}
         <button
           onClick={handleAdd}
-          className="absolute bottom-2 right-2 w-9 h-9 flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 active:scale-90 transition-all"
+          className="absolute bottom-2.5 right-2.5 w-11 h-11 flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 active:scale-90 transition-all"
           style={{ background: accent, color: accentFg }}
         >
-          <Plus size={16} />
+          <Plus size={18} />
         </button>
       </div>
 
       {/* Label */}
-      <p className="font-mono text-[13px] tracking-[0.08em] font-bold truncate leading-tight mt-1" style={{ color: fg }} onClick={() => onClick?.(product)}>
+      <p className="font-mono text-[15px] tracking-[0.05em] font-bold leading-tight mt-1.5" style={{ color: fg }} onClick={() => onClick?.(product)}>
         {product.name}
       </p>
 
       {/* Price + Bulk starting */}
-      <div className="flex items-baseline gap-1.5 mt-1">
-        <span className="font-mono text-[15px] font-bold" style={{ color: fg }}>${product.price}</span>
+      <div className="flex items-baseline gap-2 mt-1.5">
+        <span className="font-mono text-[17px] font-bold" style={{ color: fg }}>${product.price}</span>
         {hasBulk && product.bulk && (
-          <span className="font-mono text-[10px] tracking-wider" style={{ color: muted }}>
-            · QP ${product.bulk[0].price}
+          <span className="font-mono text-[11px] tracking-wider" style={{ color: muted }}>
+            · bulk ${product.bulk[0].price}
           </span>
         )}
       </div>

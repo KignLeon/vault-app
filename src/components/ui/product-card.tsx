@@ -143,12 +143,12 @@ export function ProductCard({
       </div>
 
       {/* Label */}
-      <p className="font-mono text-[15px] tracking-[0.05em] font-bold leading-tight mt-1.5" style={{ color: fg }} onClick={() => onClick?.(product)}>
+      <p className="font-mono text-[15px] tracking-[0.05em] font-bold leading-tight mt-1.5 px-1.5" style={{ color: fg }} onClick={() => onClick?.(product)}>
         {product.name}
       </p>
 
       {/* Price + Bulk starting */}
-      <div className="flex items-baseline gap-2 mt-1.5">
+      <div className="flex items-baseline gap-2 mt-1.5 pb-2 px-1.5">
         <span className="font-mono text-[17px] font-bold" style={{ color: fg }}>${product.price}</span>
         {hasBulk && product.bulk && (
           <span className="font-mono text-[11px] tracking-wider" style={{ color: muted }}>

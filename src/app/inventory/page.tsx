@@ -69,7 +69,7 @@ export default function InventoryPage() {
   return (
     <AppShell>
       {/* Hero */}
-      <div className="pt-5 pb-3" style={{ borderBottom: `1px solid ${border}` }}>
+      <div className="px-2 md:px-4 pt-5 pb-3" style={{ borderBottom: `1px solid ${border}` }}>
         <h1 className="font-mono text-base tracking-[0.25em] uppercase mb-1" style={{ color: fg }}>
           INVENTORY
         </h1>
@@ -79,7 +79,7 @@ export default function InventoryPage() {
       </div>
 
       {/* Categories */}
-      <div className="flex items-center gap-2 overflow-x-auto no-scroll-bar py-3 md:flex-wrap">
+      <div className="flex items-center gap-2 overflow-x-auto no-scroll-bar px-2 md:px-4 py-3 md:flex-wrap">
         {categories.map((cat) => (
           <button
             key={cat.id}
@@ -98,21 +98,21 @@ export default function InventoryPage() {
       </div>
 
       {/* Product count */}
-      <div className="mb-3">
+      <div className="mb-3 px-2 md:px-4">
         <span className="font-mono text-sm tracking-wider" style={{ color: muted }}>
           {loadingProducts ? "LOADING..." : `${filtered.length} PRODUCTS · BULK PRICING AVAILABLE`}
         </span>
       </div>
 
-      {/* Grid — with loading skeletons */}
+      {/* Grid — true full-bleed, no side padding */}
       {loadingProducts ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="aspect-[4/5] rounded animate-pulse" style={{ background: isDark ? "#111" : "#f0f0f0" }} />
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-px">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div key={i} className="aspect-[4/5] animate-pulse" style={{ background: isDark ? "#111" : "#f0f0f0" }} />
           ))}
         </div>
       ) : (
-      <motion.div layout className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3">
+      <motion.div layout className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-px">
         <AnimatePresence mode="popLayout">
           {filtered.map((product) => (
             <motion.div

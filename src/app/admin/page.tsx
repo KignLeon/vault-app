@@ -1187,20 +1187,37 @@ function InventoryPanel() {
       </div>
 
       {/* ── Category Filter ── */}
-      <div className="flex items-center gap-1.5 flex-wrap">
-        {["all", ...categories].map(c => (
-          <button key={c} onClick={() => setCategoryFilter(c)}
-            className="font-mono text-[8px] px-2.5 py-1 border transition-all"
-            style={{
-              borderColor: categoryFilter === c ? accent : border,
-              color: categoryFilter === c ? accent : muted,
-              background: categoryFilter === c ? `${accent}15` : "transparent",
-            }}
-          >
-            {c === "all" ? "ALL" : c.toUpperCase()}
-          </button>
-        ))}
-      </div>
+      {(() => {
+        const CAT_DOTS: Record<string, string> = {
+          featured: "rgb(234,179,8)", exotic: "rgb(168,85,247)", candy: "rgb(236,72,153)",
+          gas: "rgb(34,197,94)", premium: "rgb(59,130,246)", prerolls: "rgb(249,115,22)", smalls: "rgb(156,163,175)",
+        };
+        return (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {["all", ...categories].map(c => {
+              const count = c === "all" ? products.length : products.filter(p => p.category === c).length;
+              const dot = CAT_DOTS[c];
+              const isActive = categoryFilter === c;
+              return (
+                <button key={c} onClick={() => setCategoryFilter(c)}
+                  className="flex items-center gap-1 font-mono text-[8px] px-2.5 py-1 border transition-all"
+                  style={{
+                    borderColor: isActive ? accent : border,
+                    color: isActive ? accent : muted,
+                    background: isActive ? `${accent}15` : "transparent",
+                  }}
+                >
+                  {dot && !isActive && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: dot }} />}
+                  {c === "all" ? "ALL" : c.toUpperCase()}
+                  <span className="font-mono text-[7px] px-1 py-px rounded-sm" style={{ background: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)", color: muted }}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        );
+      })()}
 
       {/* ── Product Editor Modal ── */}
       <AnimatePresence>

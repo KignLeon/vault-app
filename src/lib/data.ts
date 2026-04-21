@@ -589,17 +589,11 @@ export const products: Product[] = [
 ];
 
 // ---- CATEGORIES ----
-// IMPORTANT: These must match the `category` field values stored in the Supabase `products` table.
-// DB categories: featured, exotic, candy, gas, premium, prerolls, smalls
 export const categories = [
-  { id: "all",       label: "ALL",       emoji: "" },
-  { id: "featured",  label: "FEATURED",  emoji: "⭐" },
-  { id: "exotic",    label: "EXOTIC",    emoji: "🍭" },
-  { id: "candy",     label: "CANDY",     emoji: "🍬" },
-  { id: "gas",       label: "GAS",       emoji: "⛽" },
-  { id: "premium",   label: "PREMIUM",   emoji: "🧊" },
-  { id: "prerolls",  label: "PRE-ROLLS", emoji: "🔥" },
-  { id: "smalls",    label: "SMALLS",    emoji: "📦" },
+  { id: "all", label: "ALL", emoji: "" },
+  { id: "indoors", label: "INDOORS", emoji: "🧊" },
+  { id: "greenhouse", label: "GREENHOUSE", emoji: "🌿" },
+  { id: "pre-rolls", label: "PRE-ROLLS", emoji: "🔥" },
 ];
 
 // ---- SHIPPING ----

@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
     old_value: order.status,
     new_value: newStatus,
     metadata: { source: "carrier_webhook", tracking_number: trackingNumber, raw_status: rawStatus },
-  }).then(() => {}).catch(() => {});
+  }).catch(() => {});
 
   // ── Notifications ─────────────────────────────────────────────────────────
   const updatedOrder = { ...order, status: newStatus, tracking_number: trackingNumber, tracking_url: trackingUrl };

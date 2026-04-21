@@ -191,7 +191,7 @@ export async function PATCH(request: NextRequest) {
   // ── Audit event + Notifications (status changes only, non-blocking) ──────
   if (status && currentOrder?.status !== status) {
     // Log audit event
-    admin.from("order_events").insert({
+    void Promise.resolve(admin.from("order_events").insert({
       order_id: orderId,
       event_type: "status_change",
       old_value: currentOrder?.status,
@@ -200,7 +200,7 @@ export async function PATCH(request: NextRequest) {
         changed_by: user.id,
         tracking_number: trackingNumber || currentOrder?.tracking_number,
       },
-    }).then().catch((e: Error) => console.warn("[order_events insert]", e.message));
+    })).catch((e: Error) => console.warn("[order_events insert]", e.message));
 
     // Build merged order object for notification
     const updatedOrder = { ...currentOrder, ...updates };
@@ -208,19 +208,13 @@ export async function PATCH(request: NextRequest) {
     // 🔔 Fire shipped notification (idempotent — only if not already notified)
     if (status === "shipped" && !currentOrder?.notified_shipped) {
       sendOrderNotification(updatedOrder, "shipped").catch(console.error);
-      admin.from("orders")
-        .update({ notified_shipped: true })
-        .eq("id", orderId)
-        .then().catch(() => {});
+      void Promise.resolve(admin.from("orders").update({ notified_shipped: true }).eq("id", orderId)).catch(() => {});
     }
 
     // 🔔 Fire delivered notification (idempotent)
     if ((status === "completed" || status === "delivered") && !currentOrder?.notified_delivered) {
       sendOrderNotification(updatedOrder, "delivered").catch(console.error);
-      admin.from("orders")
-        .update({ notified_delivered: true })
-        .eq("id", orderId)
-        .then().catch(() => {});
+      void Promise.resolve(admin.from("orders").update({ notified_delivered: true }).eq("id", orderId)).catch(() => {});
     }
   }
 

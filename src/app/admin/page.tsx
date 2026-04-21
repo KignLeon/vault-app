@@ -32,7 +32,7 @@ import {
 } from "@/lib/community";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-type AdminTab = "overview" | "orders" | "inventory" | "announcements" | "deals" | "users" | "settings";
+type AdminTab = "overview" | "orders" | "inventory" | "deals" | "users" | "settings";
 
 const STATUS_COLORS: Record<string, string> = {
   pending:    "bg-yellow-500/10 text-yellow-400 border-yellow-400/30",
@@ -144,13 +144,12 @@ export default function AdminPage() {
   }
 
   const tabs: { id: AdminTab; label: string; icon: typeof Package }[] = [
-    { id: "overview",       label: "OVERVIEW",      icon: TrendingUp },
-    { id: "orders",         label: "ORDERS",        icon: ShoppingCart },
-    { id: "inventory",      label: "INVENTORY",     icon: Package },
-    { id: "announcements",  label: "ANNOUNCEMENTS", icon: FileText },
-    { id: "deals",          label: "DEALS",         icon: Ticket },
-    { id: "users",          label: "USERS",         icon: Users },
-    { id: "settings",       label: "SETTINGS",      icon: Settings },
+    { id: "overview",   label: "OVERVIEW",   icon: TrendingUp },
+    { id: "orders",     label: "ORDERS",     icon: ShoppingCart },
+    { id: "inventory",  label: "INVENTORY",  icon: Package },
+    { id: "deals",      label: "DEALS",      icon: Ticket },
+    { id: "users",      label: "USERS",      icon: Users },
+    { id: "settings",   label: "SETTINGS",   icon: Settings },
   ];
 
   return (
@@ -194,13 +193,12 @@ export default function AdminPage() {
           initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
         >
-          {activeTab === "overview"       && <OverviewPanel />}
-          {activeTab === "orders"         && <OrdersPanel />}
-          {activeTab === "inventory"      && <InventoryPanel />}
-          {activeTab === "announcements"  && <CommunityPanel />}
-          {activeTab === "deals"          && <PromosPanel />}
-          {activeTab === "users"          && <UsersPanel />}
-          {activeTab === "settings"       && <SettingsPanel />}
+          {activeTab === "overview"   && <OverviewPanel />}
+          {activeTab === "orders"     && <OrdersPanel />}
+          {activeTab === "inventory"  && <InventoryPanel />}
+          {activeTab === "deals"      && <PromosPanel />}
+          {activeTab === "users"      && <UsersPanel />}
+          {activeTab === "settings"   && <SettingsPanel />}
         </motion.div>
       </AnimatePresence>
     </AppShell>
@@ -789,8 +787,6 @@ function InventoryPanel() {
 
   // Bulk action state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  // Category filter for inventory list
-  const [catFilter, setCatFilter] = useState("all");
 
   const toggleSelection = (id: string) => {
     const newSet = new Set(selectedIds);
@@ -847,9 +843,9 @@ function InventoryPanel() {
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [formError, setFormError] = useState("");
 
-  // Must match DB `category` column values
-  const PRODUCT_CATEGORIES = ["featured", "exotic", "candy", "gas", "premium", "prerolls", "smalls"];
-  const categories = PRODUCT_CATEGORIES; // alias for backward compat
+  const categories = ["featured", "exotic", "candy", "gas", "premium", "prerolls", "smalls"];
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const filteredProducts = categoryFilter === "all" ? products : products.filter(p => p.category === categoryFilter);
 
   useEffect(() => { fetchProducts().then(d => { setProducts(d); setLoading(false); }); }, []);
 
@@ -1180,7 +1176,7 @@ function InventoryPanel() {
 
       <div className="flex items-center justify-between">
         <span className="font-mono text-[10px] tracking-[0.2em]" style={{ color: muted }}>
-          {loading ? "..." : `${catFilter === "all" ? products.length : products.filter(p => p.category === catFilter).length} PRODUCTS${catFilter !== "all" ? ` IN ${catFilter.toUpperCase()}` : ""}`}
+          {loading ? "..." : categoryFilter === "all" ? `${products.length} PRODUCTS` : `${filteredProducts.length} / ${products.length} (${categoryFilter.toUpperCase()})`}
         </span>
         <button onClick={openCreate}
           className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] tracking-wider transition-all active:scale-95"
@@ -1190,24 +1186,21 @@ function InventoryPanel() {
         </button>
       </div>
 
-      {/* ── Category Filter Bar ── */}
-      {!loading && products.length > 0 && (
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scroll-bar pb-1">
-          {["all", ...PRODUCT_CATEGORIES].map(c => (
-            <button key={c}
-              onClick={() => setCatFilter(c)}
-              className="font-mono text-[8px] px-2.5 py-1 border whitespace-nowrap transition-all flex-shrink-0"
-              style={{
-                borderColor: catFilter === c ? accent : border,
-                color: catFilter === c ? accent : muted,
-                background: catFilter === c ? `${accent}15` : "transparent",
-              }}
-            >
-              {c.toUpperCase()}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* ── Category Filter ── */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {["all", ...categories].map(c => (
+          <button key={c} onClick={() => setCategoryFilter(c)}
+            className="font-mono text-[8px] px-2.5 py-1 border transition-all"
+            style={{
+              borderColor: categoryFilter === c ? accent : border,
+              color: categoryFilter === c ? accent : muted,
+              background: categoryFilter === c ? `${accent}15` : "transparent",
+            }}
+          >
+            {c === "all" ? "ALL" : c.toUpperCase()}
+          </button>
+        ))}
+      </div>
 
       {/* ── Product Editor Modal ── */}
       <AnimatePresence>
@@ -1447,9 +1440,7 @@ function InventoryPanel() {
           <span className="text-right">ACTIONS</span>
         </div>
 
-        {loading ? <Loader /> : products.length === 0 ? <Empty label="No products yet" /> : products
-          .filter(p => catFilter === "all" || p.category === catFilter)
-          .map(p => (
+        {loading ? <Loader /> : filteredProducts.length === 0 ? <Empty label={categoryFilter === "all" ? "No products yet" : `No ${categoryFilter} products`} /> : filteredProducts.map(p => (
           <div key={p.id} className="group px-3 py-3 hover:bg-white/[0.02] transition-colors" style={{ background: selectedIds.has(p.id) ? (isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)") : "transparent" }}>
             {/* Mobile card layout */}
             <div className="flex items-center gap-3 md:grid md:grid-cols-[30px_1fr_80px_70px_60px_80px_100px] md:gap-2 md:items-center">

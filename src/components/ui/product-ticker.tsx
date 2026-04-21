@@ -16,22 +16,32 @@ const BADGE_MAP: Record<string, { icon: typeof Flame; label: string }> = {
 };
 
 function buildTickerProducts(products: NormalizedProduct[]): NormalizedProduct[] {
-  const inStock = products.filter((p) => p.status !== "sold-out" && !p.tags?.includes("hidden"));
+  // Only consider in-stock, visible products
+  const visible = products.filter(
+    (p) => p.status !== "sold-out" && !p.tags?.includes("hidden")
+  );
 
-  const featured    = inStock.filter((p) => p.featured).slice(0, 8);
-  const prerolls    = inStock.filter((p) => p.category === "prerolls").slice(0, 3);
-  const smalls      = inStock.filter((p) => p.category === "smalls").slice(0, 2);
-  const exotics     = inStock.filter((p) => p.category === "exotic" && !p.featured).slice(0, 3);
+  const items = [
+    ...visible.filter((p) => p.featured).slice(0, 8),
+    ...visible.filter((p) => p.category === "prerolls").slice(0, 3),
+    ...visible.filter((p) => p.category === "smalls").slice(0, 2),
+    ...visible.filter((p) => p.category === "exotic" && !p.featured).slice(0, 3),
+  ];
 
-  let items = [...featured, ...prerolls, ...smalls, ...exotics];
+  // Deduplicate
+  const deduped = items.filter(
+    (p, i, arr) => arr.findIndex((x) => x.id === p.id) === i
+  );
 
-  // Fallback: if fewer than 4 items (e.g. featured flag not set), use top in-stock products
-  if (items.length < 4) {
-    items = inStock.slice(0, 12);
+  // Fallback: if pool is too small, fill with any visible products
+  if (deduped.length < 4) {
+    const extra = visible
+      .filter((p) => !deduped.find((x) => x.id === p.id))
+      .slice(0, 16);
+    return [...deduped, ...extra];
   }
 
-  // Deduplicate by id
-  return items.filter((p, i, arr) => arr.findIndex((x) => x.id === p.id) === i);
+  return deduped;
 }
 
 export function ProductTicker() {

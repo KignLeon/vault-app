@@ -118,13 +118,13 @@ export async function POST(req: NextRequest) {
     .eq("id", order.id);
 
   // ── Log event ─────────────────────────────────────────────────────────────
-  await admin.from("order_events").insert({
+  void Promise.resolve(admin.from("order_events").insert({
     order_id: order.id,
     event_type: "status_change",
     old_value: order.status,
     new_value: newStatus,
     metadata: { source: "carrier_webhook", tracking_number: trackingNumber, raw_status: rawStatus },
-  }).catch(() => {});
+  })).catch(() => {});
 
   // ── Notifications ─────────────────────────────────────────────────────────
   const updatedOrder = { ...order, status: newStatus, tracking_number: trackingNumber, tracking_url: trackingUrl };

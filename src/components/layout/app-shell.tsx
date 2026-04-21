@@ -17,8 +17,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <ProductTicker />
       </div>
 
-      {/* Main content — true full-width, zero side padding on desktop */}
-      <main className="w-full px-1.5 sm:px-2 md:px-0 pt-[160px] pb-28 md:pb-16 flex-1 min-h-[100vh]">
+      {/* Main content — with padding so it isn't squeezed to the edges */}
+      <main className="w-full px-4 md:px-8 max-w-[1400px] mx-auto pt-[160px] pb-28 md:pb-16 flex-1 min-h-[100vh]">
         {children}
       </main>
 

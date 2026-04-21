@@ -109,7 +109,7 @@ export default function InventoryPage() {
   return (
     <AppShell>
       {/* Page Header */}
-      <div className="px-4 md:px-6 pt-8 pb-5" style={{ borderBottom: `1px solid ${border}` }}>
+      <div className="pt-8 pb-5" style={{ borderBottom: `1px solid ${border}` }}>
         <h1 className="font-mono text-xl tracking-[0.2em] uppercase mb-1" style={{ color: fg }}>
           INVENTORY
         </h1>
@@ -120,7 +120,7 @@ export default function InventoryPage() {
 
       {/* ── Sticky Category Tabs — built from real DB categories ── */}
       <div
-        className="sticky top-0 z-20 flex items-center gap-2 overflow-x-auto no-scroll-bar px-4 md:px-6 py-3"
+        className="sticky top-0 z-20 flex items-center gap-2 overflow-x-auto no-scroll-bar py-3"
         style={{
           background: isDark ? "rgba(0,0,0,0.9)" : "rgba(255,255,255,0.95)",
           backdropFilter: "blur(16px)",
@@ -211,7 +211,7 @@ export default function InventoryPage() {
               transition={{ duration: 0.3, delay: gi * 0.04 }}
             >
               {/* Section Header */}
-              <div className="flex items-center gap-3 px-4 md:px-6 mb-3">
+              <div className="flex items-center gap-3 mb-3">
                 <span
                   className="w-3 h-3 rounded-full flex-shrink-0"
                   style={{ background: group.dot }}
@@ -253,7 +253,7 @@ export default function InventoryPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
               >
-                <div className="flex items-center gap-3 px-4 md:px-6 mb-3">
+                <div className="flex items-center gap-3 mb-3">
                   <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: muted }} />
                   <span className="font-mono text-xs tracking-[0.3em] font-bold" style={{ color: fg }}>
                     OTHER
@@ -284,7 +284,7 @@ export default function InventoryPage() {
       ) : (
         /* ── FILTERED CATEGORY VIEW ── */
         <div className="pt-4 pb-10">
-          <div className="px-4 md:px-6 mb-4 flex items-center gap-3">
+          <div className="mb-4 flex items-center gap-3">
             <span
               className="w-2.5 h-2.5 rounded-full"
               style={{ background: getCatDot(categoryList, activeCategory) }}

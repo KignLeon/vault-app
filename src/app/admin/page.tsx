@@ -843,11 +843,45 @@ function InventoryPanel() {
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [formError, setFormError] = useState("");
 
-  const categories = ["featured", "exotic", "candy", "gas", "premium", "prerolls", "smalls"];
+  // ── Dynamic categories (loaded from /api/categories → DISTINCT from DB products) ──
+  const [dbCategories, setDbCategories] = useState<string[]>(["featured", "exotic", "candy", "gas", "premium", "prerolls", "smalls"]);
+  const [newCatInput, setNewCatInput] = useState("");
+  const [showNewCat, setShowNewCat] = useState(false);
+  const [creatingCat, setCreatingCat] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const filteredProducts = categoryFilter === "all" ? products : products.filter(p => p.category === categoryFilter);
 
-  useEffect(() => { fetchProducts().then(d => { setProducts(d); setLoading(false); }); }, []);
+  const loadCategories = async () => {
+    try {
+      const res = await fetch("/api/categories", { headers: adminHeaders() });
+      const data = await res.json();
+      if (data.categories?.length) setDbCategories(data.categories);
+    } catch {}
+  };
+
+  useEffect(() => {
+    fetchProducts().then(d => { setProducts(d); setLoading(false); });
+    loadCategories();
+  }, []);
+
+  // ── Create new category inline ──
+  const handleCreateCategory = async () => {
+    const slug = newCatInput.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    if (!slug) return;
+    setCreatingCat(true);
+    try {
+      await fetch("/api/categories", {
+        method: "POST",
+        headers: { ...adminHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newCatInput.trim() }),
+      });
+    } catch {}
+    setDbCategories(prev => [...new Set([...prev, slug])].sort());
+    setForm(p => ({ ...p, category: slug }));
+    setNewCatInput("");
+    setShowNewCat(false);
+    setCreatingCat(false);
+  };
 
   // ── Media upload handler (targets a specific slot) ──
   // For videos: uses client-side direct Cloudinary upload via signed URL
@@ -1194,7 +1228,7 @@ function InventoryPanel() {
         };
         return (
           <div className="flex items-center gap-1.5 flex-wrap">
-            {["all", ...categories].map(c => {
+            {["all", ...dbCategories].map(c => {
               const count = c === "all" ? products.length : products.filter(p => p.category === c).length;
               const dot = CAT_DOTS[c];
               const isActive = categoryFilter === c;
@@ -1268,21 +1302,62 @@ function InventoryPanel() {
                     <AdminInput label="STOCK" value={form.stock} onChange={v => setForm(p => ({ ...p, stock: v }))} placeholder="50" type="number" />
                   </div>
                   <div className="mt-3">
-                    <span className="font-mono text-[9px] tracking-wider block mb-1.5" style={{ color: muted }}>CATEGORY</span>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="font-mono text-[9px] tracking-wider" style={{ color: muted }}>CATEGORY</span>
+                      <button
+                        type="button"
+                        onClick={() => { setShowNewCat(!showNewCat); setNewCatInput(""); }}
+                        className="flex items-center gap-1 font-mono text-[8px] tracking-wider hover:opacity-70 transition-opacity"
+                        style={{ color: accent }}
+                      >
+                        <Plus size={9} />{showNewCat ? " CANCEL" : " NEW CATEGORY"}
+                      </button>
+                    </div>
+
+                    {/* ── Inline category creator ── */}
+                    {showNewCat && (
+                      <div className="flex gap-2 mb-2">
+                        <input
+                          value={newCatInput}
+                          onChange={e => setNewCatInput(e.target.value)}
+                          onKeyDown={e => e.key === "Enter" && handleCreateCategory()}
+                          placeholder="e.g. vapes, edibles, concentrates..."
+                          autoFocus
+                          className="flex-1 bg-transparent border px-2.5 py-1.5 font-mono text-[10px] outline-none transition-colors"
+                          style={{ borderColor: accent, color: fg }}
+                        />
+                        <button
+                          onClick={handleCreateCategory}
+                          disabled={creatingCat || !newCatInput.trim()}
+                          className="px-3 py-1.5 font-mono text-[9px] tracking-wider disabled:opacity-40 transition-all"
+                          style={{ background: accent, color: accentFg }}
+                        >
+                          {creatingCat ? "..." : "CREATE"}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* ── Category pills (from DB) ── */}
                     <div className="flex gap-1.5 flex-wrap">
-                      {categories.map(c => (
+                      {dbCategories.map(c => (
                         <button key={c} onClick={() => setForm(p => ({ ...p, category: c }))}
-                          className="font-mono text-[8px] px-2.5 py-1 border transition-all"
+                          className="font-mono text-[8px] px-2.5 py-1 border transition-all flex items-center gap-1"
                           style={{
                             borderColor: form.category === c ? accent : border,
                             color: form.category === c ? accent : muted,
                             background: form.category === c ? `${accent}15` : "transparent",
                           }}
                         >
+                          {form.category === c && <Check size={8} />}
                           {c.toUpperCase()}
                         </button>
                       ))}
                     </div>
+                    {form.category && (
+                      <p className="font-mono text-[8px] mt-1" style={{ color: muted }}>
+                        Selected: <span style={{ color: accent }}>{form.category}</span>
+                      </p>
+                    )}
                   </div>
                 </div>
 

@@ -11,19 +11,25 @@ import { GasclubLogo } from "@/components/ui/gasclub-logo";
 import { useTheme } from "@/lib/theme";
 import { useCart } from "@/lib/cart";
 
-// ── Categories matching actual DB values ──────────────────────────────────────
-const CATEGORIES = [
-  { id: "all",      label: "ALL",       dot: "" },
-  { id: "featured", label: "FEATURED",  dot: "rgb(234,179,8)" },
-  { id: "exotic",   label: "EXOTIC",    dot: "rgb(168,85,247)" },
-  { id: "candy",    label: "CANDY",     dot: "rgb(236,72,153)" },
-  { id: "gas",      label: "GAS",       dot: "rgb(34,197,94)" },
-  { id: "premium",  label: "PREMIUM",   dot: "rgb(59,130,246)" },
-  { id: "prerolls", label: "PRE-ROLLS", dot: "rgb(249,115,22)" },
-  { id: "smalls",   label: "SMALLS",    dot: "rgb(156,163,175)" },
+// ── Color palette for dynamic category dots ───────────────────────────────────
+// Cycles through a set of vibrant colors — works for any category name
+const DOT_PALETTE = [
+  "rgb(234,179,8)",
+  "rgb(168,85,247)",
+  "rgb(236,72,153)",
+  "rgb(34,197,94)",
+  "rgb(59,130,246)",
+  "rgb(249,115,22)",
+  "rgb(156,163,175)",
+  "rgb(239,68,68)",
+  "rgb(20,184,166)",
+  "rgb(250,204,21)",
 ];
 
-const CATEGORY_ORDER = ["featured", "exotic", "candy", "gas", "premium", "prerolls", "smalls"];
+function getCatDot(cats: string[], catId: string): string {
+  const idx = cats.indexOf(catId);
+  return DOT_PALETTE[idx % DOT_PALETTE.length] ?? DOT_PALETTE[0];
+}
 
 export default function InventoryPage() {
   const [activeCategory, setActiveCategory] = useState("all");
@@ -33,12 +39,27 @@ export default function InventoryPage() {
   const [allProducts, setAllProducts] = useState<NormalizedProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [galleryIndex, setGalleryIndex] = useState(0);
+
+  // ── Live categories from DB (derived from /api/categories) ──────────────────
+  const [dbCategories, setDbCategories] = useState<string[]>([]);
+
   const { fg, border, isDark, muted, accent, accentFg, surfaceAccent } = useTheme();
   const { addToCart, setCartOpen } = useCart();
 
   useEffect(() => {
     setLoading(true);
-    fetchProducts().then((d) => { setAllProducts(d); setLoading(false); });
+    // Load products and categories in parallel
+    Promise.all([
+      fetchProducts(),
+      fetch("/api/categories").then((r) => r.json()).catch(() => ({ categories: [] })),
+    ]).then(([products, catData]) => {
+      setAllProducts(products);
+      setLoading(false);
+      // Set categories from API; fall back to deriving from products if API returns nothing
+      if (catData.categories?.length > 0) {
+        setDbCategories(catData.categories);
+      }
+    });
   }, []);
 
   const visible = useMemo(
@@ -46,20 +67,28 @@ export default function InventoryPage() {
     [allProducts]
   );
 
+  // ── Derive category list: API result OR distinct from products ──────────────
+  const categoryList = useMemo(() => {
+    if (dbCategories.length > 0) return dbCategories;
+    // Fallback: extract distinct categories from actual products
+    return [...new Set(visible.map((p) => p.category).filter(Boolean))].sort();
+  }, [dbCategories, visible]);
+
   const filtered = useMemo(
     () => activeCategory === "all" ? visible : visible.filter((p) => p.category === activeCategory),
     [activeCategory, visible]
   );
 
+  // ── Grouped sections for "all" view — uses real category list from DB ───────
   const grouped = useMemo(() =>
-    CATEGORY_ORDER
+    categoryList
       .map((catId) => ({
         catId,
-        cat: CATEGORIES.find((c) => c.id === catId)!,
+        dot: getCatDot(categoryList, catId),
         products: visible.filter((p) => p.category === catId),
       }))
       .filter((g) => g.products.length > 0),
-    [visible]
+    [categoryList, visible]
   );
 
   const openProduct = (p: NormalizedProduct) => {
@@ -89,7 +118,7 @@ export default function InventoryPage() {
         </p>
       </div>
 
-      {/* ── Sticky Category Tabs ── */}
+      {/* ── Sticky Category Tabs — built from real DB categories ── */}
       <div
         className="sticky top-0 z-20 flex items-center gap-2 overflow-x-auto no-scroll-bar px-4 md:px-6 py-3"
         style={{
@@ -99,17 +128,40 @@ export default function InventoryPage() {
           borderBottom: `1px solid ${border}`,
         }}
       >
-        {CATEGORIES.map((cat) => {
-          const count =
-            cat.id === "all"
-              ? visible.length
-              : visible.filter((p) => p.category === cat.id).length;
-          const isActive = activeCategory === cat.id;
-          if (cat.id !== "all" && count === 0) return null; // hide empty categories
+        {/* ALL tab */}
+        <button
+          onClick={() => setActiveCategory("all")}
+          className="flex items-center gap-1.5 font-mono text-[11px] tracking-[0.1em] px-3 py-1.5 border transition-all whitespace-nowrap active:scale-95 flex-shrink-0"
+          style={{
+            background: activeCategory === "all" ? accent : "transparent",
+            color: activeCategory === "all" ? accentFg : muted,
+            borderColor: activeCategory === "all" ? accent : border,
+          }}
+        >
+          ALL
+          <span
+            className="font-mono text-[9px] px-1 py-px rounded-sm"
+            style={{
+              background: activeCategory === "all"
+                ? "rgba(0,0,0,0.2)"
+                : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
+              color: activeCategory === "all" ? accentFg : muted,
+            }}
+          >
+            {visible.length}
+          </span>
+        </button>
+
+        {/* Dynamic category tabs */}
+        {categoryList.map((catId) => {
+          const count = visible.filter((p) => p.category === catId).length;
+          if (count === 0) return null;
+          const isActive = activeCategory === catId;
+          const dot = getCatDot(categoryList, catId);
           return (
             <button
-              key={cat.id}
-              onClick={() => setActiveCategory(cat.id)}
+              key={catId}
+              onClick={() => setActiveCategory(catId)}
               className="flex items-center gap-1.5 font-mono text-[11px] tracking-[0.1em] px-3 py-1.5 border transition-all whitespace-nowrap active:scale-95 flex-shrink-0"
               style={{
                 background: isActive ? accent : "transparent",
@@ -117,26 +169,21 @@ export default function InventoryPage() {
                 borderColor: isActive ? accent : border,
               }}
             >
-              {cat.dot && !isActive && (
-                <span
-                  className="w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ background: cat.dot }}
-                />
+              {!isActive && (
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: dot }} />
               )}
-              {cat.label}
-              {count > 0 && (
-                <span
-                  className="font-mono text-[9px] px-1 py-px rounded-sm"
-                  style={{
-                    background: isActive
-                      ? "rgba(0,0,0,0.2)"
-                      : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
-                    color: isActive ? accentFg : muted,
-                  }}
-                >
-                  {count}
-                </span>
-              )}
+              {catId.toUpperCase().replace(/-/g, " ")}
+              <span
+                className="font-mono text-[9px] px-1 py-px rounded-sm"
+                style={{
+                  background: isActive
+                    ? "rgba(0,0,0,0.2)"
+                    : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
+                  color: isActive ? accentFg : muted,
+                }}
+              >
+                {count}
+              </span>
             </button>
           );
         })}
@@ -154,32 +201,29 @@ export default function InventoryPage() {
           ))}
         </div>
       ) : activeCategory === "all" ? (
-        /* ── GROUPED SECTIONS (ALL VIEW) ── */
+        /* ── GROUPED SECTIONS VIEW — one section per real DB category ── */
         <div className="space-y-12 pt-6 pb-10">
           {grouped.map((group, gi) => (
             <motion.section
               key={group.catId}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: gi * 0.05 }}
+              transition={{ duration: 0.3, delay: gi * 0.04 }}
             >
               {/* Section Header */}
               <div className="flex items-center gap-3 px-4 md:px-6 mb-3">
                 <span
                   className="w-3 h-3 rounded-full flex-shrink-0"
-                  style={{ background: group.cat.dot }}
+                  style={{ background: group.dot }}
                 />
                 <span
                   className="font-mono text-xs tracking-[0.3em] font-bold"
                   style={{ color: fg }}
                 >
-                  {group.cat.label}
+                  {group.catId.toUpperCase().replace(/-/g, " ")}
                 </span>
                 <div className="flex-1 h-px" style={{ background: border }} />
-                <span
-                  className="font-mono text-[9px] tracking-wider"
-                  style={{ color: muted }}
-                >
+                <span className="font-mono text-[9px] tracking-wider" style={{ color: muted }}>
                   {group.products.length} ITEM{group.products.length !== 1 ? "S" : ""}
                 </span>
               </div>
@@ -197,6 +241,37 @@ export default function InventoryPage() {
             </motion.section>
           ))}
 
+          {/* Products with no category / uncategorized */}
+          {(() => {
+            const uncategorized = visible.filter(
+              (p) => !p.category || !categoryList.includes(p.category)
+            );
+            if (uncategorized.length === 0) return null;
+            return (
+              <motion.section
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <div className="flex items-center gap-3 px-4 md:px-6 mb-3">
+                  <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: muted }} />
+                  <span className="font-mono text-xs tracking-[0.3em] font-bold" style={{ color: fg }}>
+                    OTHER
+                  </span>
+                  <div className="flex-1 h-px" style={{ background: border }} />
+                  <span className="font-mono text-[9px] tracking-wider" style={{ color: muted }}>
+                    {uncategorized.length} ITEMS
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-px">
+                  {uncategorized.map((product) => (
+                    <ProductCard key={product.id} product={product} onClick={() => openProduct(product)} />
+                  ))}
+                </div>
+              </motion.section>
+            );
+          })()}
+
           {grouped.length === 0 && (
             <div className="flex flex-col items-center justify-center py-24 gap-4">
               <Package size={32} style={{ color: muted }} />
@@ -212,11 +287,11 @@ export default function InventoryPage() {
           <div className="px-4 md:px-6 mb-4 flex items-center gap-3">
             <span
               className="w-2.5 h-2.5 rounded-full"
-              style={{ background: CATEGORIES.find((c) => c.id === activeCategory)?.dot || accent }}
+              style={{ background: getCatDot(categoryList, activeCategory) }}
             />
             <span className="font-mono text-[10px] tracking-wider" style={{ color: muted }}>
               {filtered.length} {filtered.length === 1 ? "PRODUCT" : "PRODUCTS"} ·{" "}
-              {CATEGORIES.find((c) => c.id === activeCategory)?.label}
+              {activeCategory.toUpperCase().replace(/-/g, " ")}
             </span>
           </div>
 
@@ -283,14 +358,13 @@ export default function InventoryPage() {
                     <span
                       className="font-mono text-[8px] tracking-wider px-1.5 py-0.5"
                       style={{
-                        background: (CATEGORIES.find((c) => c.id === selectedProduct.category)?.dot || accent) + "22",
-                        color: CATEGORIES.find((c) => c.id === selectedProduct.category)?.dot || accent,
+                        background: getCatDot(categoryList, selectedProduct.category) + "22",
+                        color: getCatDot(categoryList, selectedProduct.category),
                       }}
                     >
-                      {(CATEGORIES.find((c) => c.id === selectedProduct.category)?.label || selectedProduct.category).toUpperCase()}
+                      {selectedProduct.category.toUpperCase().replace(/-/g, " ")}
                     </span>
                   )}
-                  {/* Stock status */}
                   <span
                     className="font-mono text-[8px] tracking-wider px-1.5 py-0.5"
                     style={{

@@ -1222,15 +1222,14 @@ function InventoryPanel() {
 
       {/* ── Category Filter ── */}
       {(() => {
-        const CAT_DOTS: Record<string, string> = {
-          featured: "rgb(234,179,8)", exotic: "rgb(168,85,247)", candy: "rgb(236,72,153)",
-          gas: "rgb(34,197,94)", premium: "rgb(59,130,246)", prerolls: "rgb(249,115,22)", smalls: "rgb(156,163,175)",
-        };
+        const DOT_PALETTE_ADM = ["rgb(234,179,8)","rgb(168,85,247)","rgb(236,72,153)","rgb(34,197,94)","rgb(59,130,246)","rgb(249,115,22)","rgb(156,163,175)","rgb(239,68,68)","rgb(20,184,166)"];
+        const STABLE_ADM = ["featured","exotic","candy","gas","premium","prerolls","smalls"];
+        const getDotAdm = (cat: string) => { const si = STABLE_ADM.indexOf(cat); if (si !== -1) return DOT_PALETTE_ADM[si % DOT_PALETTE_ADM.length]; let h = 0; for (let i = 0; i < cat.length; i++) h = (h * 31 + cat.charCodeAt(i)) & 0xffffffff; return DOT_PALETTE_ADM[Math.abs(h) % DOT_PALETTE_ADM.length]; };
         return (
           <div className="flex items-center gap-1.5 flex-wrap">
             {["all", ...dbCategories].map(c => {
               const count = c === "all" ? products.length : products.filter(p => p.category === c).length;
-              const dot = CAT_DOTS[c];
+              const dot = c !== "all" ? getDotAdm(c) : null;
               const isActive = categoryFilter === c;
               return (
                 <button key={c} onClick={() => setCategoryFilter(c)}

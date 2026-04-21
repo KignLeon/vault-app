@@ -8,16 +8,30 @@ import { type NormalizedProduct } from "@/lib/products";
 import { Plus } from "lucide-react";
 import { GasclubLogo } from "./gasclub-logo";
 
-// Category dot colors — matches inventory page
-const CAT_DOTS: Record<string, string> = {
-  featured: "rgb(234,179,8)",
-  exotic:   "rgb(168,85,247)",
-  candy:    "rgb(236,72,153)",
-  gas:      "rgb(34,197,94)",
-  premium:  "rgb(59,130,246)",
-  prerolls: "rgb(249,115,22)",
-  smalls:   "rgb(156,163,175)",
-};
+// Color palette for dynamic category dots — cycles through colors for any category name
+const DOT_PALETTE = [
+  "rgb(234,179,8)",
+  "rgb(168,85,247)",
+  "rgb(236,72,153)",
+  "rgb(34,197,94)",
+  "rgb(59,130,246)",
+  "rgb(249,115,22)",
+  "rgb(156,163,175)",
+  "rgb(239,68,68)",
+  "rgb(20,184,166)",
+];
+
+// Known categories get stable slot assignments so colors stay consistent across renders
+const STABLE_CATS = ["featured","exotic","candy","gas","premium","prerolls","smalls"];
+
+function getDot(category: string): string {
+  const stableIdx = STABLE_CATS.indexOf(category);
+  if (stableIdx !== -1) return DOT_PALETTE[stableIdx % DOT_PALETTE.length];
+  // Unknown category: hash the name to a consistent index
+  let hash = 0;
+  for (let i = 0; i < category.length; i++) hash = (hash * 31 + category.charCodeAt(i)) & 0xffffffff;
+  return DOT_PALETTE[Math.abs(hash) % DOT_PALETTE.length];
+}
 
 export function ProductCard({
   product,
@@ -50,7 +64,7 @@ export function ProductCard({
 
   const isSoldOut = product.status === "sold-out";
   const isLowStock = product.status === "low-stock";
-  const catDot = CAT_DOTS[product.category] || muted;
+  const catDot = product.category ? getDot(product.category) : muted;
 
   return (
     <motion.div

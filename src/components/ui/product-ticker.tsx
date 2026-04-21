@@ -16,16 +16,21 @@ const BADGE_MAP: Record<string, { icon: typeof Flame; label: string }> = {
 };
 
 function buildTickerProducts(products: NormalizedProduct[]): NormalizedProduct[] {
-  const items = [
-    // Featured items
-    ...products.filter((p) => p.featured).slice(0, 8),
-    // Include some prerolls + smalls for variety
-    ...products.filter((p) => p.category === "prerolls").slice(0, 3),
-    ...products.filter((p) => p.category === "smalls").slice(0, 2),
-    // A couple exotics
-    ...products.filter((p) => p.category === "exotic" && !p.featured).slice(0, 3),
-  ];
-  // Deduplicate
+  const inStock = products.filter((p) => p.status !== "sold-out" && !p.tags?.includes("hidden"));
+
+  const featured    = inStock.filter((p) => p.featured).slice(0, 8);
+  const prerolls    = inStock.filter((p) => p.category === "prerolls").slice(0, 3);
+  const smalls      = inStock.filter((p) => p.category === "smalls").slice(0, 2);
+  const exotics     = inStock.filter((p) => p.category === "exotic" && !p.featured).slice(0, 3);
+
+  let items = [...featured, ...prerolls, ...smalls, ...exotics];
+
+  // Fallback: if fewer than 4 items (e.g. featured flag not set), use top in-stock products
+  if (items.length < 4) {
+    items = inStock.slice(0, 12);
+  }
+
+  // Deduplicate by id
   return items.filter((p, i, arr) => arr.findIndex((x) => x.id === p.id) === i);
 }
 
